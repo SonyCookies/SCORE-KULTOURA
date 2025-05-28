@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Shield, ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { FirebaseError } from "firebase/app"
 
 export default function AdminLoginForm() {
   const [email, setEmail] = useState("")
@@ -45,15 +46,20 @@ export default function AdminLoginForm() {
         await auth.signOut()
         return
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Admin login error:", error)
-      if (error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
-        setError("Invalid admin credentials")
+
+      if (error instanceof FirebaseError) {
+        if (error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
+          setError("Invalid admin credentials")
+        } else {
+          setError(error.message || "An error occurred during authentication")
+        }
+      } else if (error instanceof Error) {
+        setError(error.message)
       } else {
-        setError(error.message || "An error occurred during authentication")
+        setError("An unknown error occurred")
       }
-    } finally {
-      setLoading(false)
     }
   }
 

@@ -12,6 +12,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Shield, ArrowLeft, UserPlus } from "lucide-react"
 import Link from "next/link"
+import { FirebaseError } from "firebase/app"
+
 
 export default function AdminRegistrationForm() {
   const [formData, setFormData] = useState({
@@ -74,9 +76,16 @@ export default function AdminRegistrationForm() {
       })
 
       setSuccess(true)
-    } catch (error: any) {
+    } catch (error) {
       console.error("Admin registration error:", error)
-      setError(error.message || "An error occurred during registration")
+
+      if (error instanceof FirebaseError) {
+        setError(error.message || "An error occurred during registration")
+      } else if (error instanceof Error) {
+        setError(error.message)
+      } else {
+        setError("An unknown error occurred")
+      }
     } finally {
       setLoading(false)
     }

@@ -245,8 +245,8 @@ export default function EventCreationForm({ onEventCreated }: EventCreationFormP
                 <div className="text-sm text-blue-700">
                   <p className="font-medium mb-1">This will create:</p>
                   <ul className="list-disc list-inside space-y-1">
-                    {predefinedEvents.map((event, index) => (
-                      <li key={index}>{event.title}</li>
+                    {predefinedEvents.map((event) => (
+                      <li key={event.title}>{event.title}</li>
                     ))}
                   </ul>
                 </div>
@@ -266,9 +266,9 @@ export default function EventCreationForm({ onEventCreated }: EventCreationFormP
                 <div className="space-y-2">
                   <Label>Quick Templates</Label>
                   <div className="grid grid-cols-1 gap-2">
-                    {predefinedEvents.map((event, index) => (
+                    {predefinedEvents.map((event) => (
                       <Button
-                        key={index}
+                        key={event.title}
                         type="button"
                         variant="outline"
                         size="sm"

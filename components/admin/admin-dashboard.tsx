@@ -32,7 +32,6 @@ import ParticipantManagement from "./participant-management"
 import EventResultsDialog from "./event-results-dialog"
 import SpecialAwardsManagement from "./special-awards-management"
 import type { Event, Judge } from "@/types"
-import { Console } from "console"
 
 interface LoadingState {
   isLoading: boolean

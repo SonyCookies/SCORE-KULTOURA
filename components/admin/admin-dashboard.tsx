@@ -32,6 +32,7 @@ import ParticipantManagement from "./participant-management"
 import EventResultsDialog from "./event-results-dialog"
 import SpecialAwardsManagement from "./special-awards-management"
 import type { Event, Judge } from "@/types"
+import { Console } from "console"
 
 interface LoadingState {
   isLoading: boolean
@@ -70,14 +71,15 @@ export default function AdminDashboard() {
 
         // Check which events have criteria
         const criteriaStatus: Record<string, boolean> = {}
-        for (const event of eventsData) {
-          try {
-            const criteriaDoc = await getDoc(doc(db, "eventCriteria", event.id))
-            criteriaStatus[event.id] = criteriaDoc.exists()
-          } catch (_error) {
-            criteriaStatus[event.id] = false
-          }
-        }
+for (const event of eventsData) {
+  try {
+    const criteriaDoc = await getDoc(doc(db, "eventCriteria", event.id));
+    criteriaStatus[event.id] = criteriaDoc.exists();
+  } catch {
+    criteriaStatus[event.id] = false;
+  }
+}
+
 
         setEventCriteria(criteriaStatus)
         setEvents(eventsData.sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds))
@@ -188,7 +190,7 @@ export default function AdminDashboard() {
         // Also delete criteria if exists
         try {
           await deleteDoc(doc(db, "eventCriteria", eventId))
-        } catch (_criteriaError) {
+        } catch {
           // Criteria might not exist, ignore error
         }
 
@@ -215,7 +217,7 @@ export default function AdminDashboard() {
       try {
         const criteriaDoc = await getDoc(doc(db, "eventCriteria", event.id))
         criteriaStatus[event.id] = criteriaDoc.exists()
-      } catch (_refreshError) {
+      } catch {
         criteriaStatus[event.id] = false
       }
     }

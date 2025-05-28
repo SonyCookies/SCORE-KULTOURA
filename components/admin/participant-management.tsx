@@ -84,7 +84,7 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
       const updatedParticipants = [...participants, ...newParticipants]
       setParticipants(updatedParticipants)
       await updateEventParticipants(updatedParticipants)
-    } catch (_error) {
+    } catch {
       setError("Failed to add participants")
     } finally {
       setLoading(false)
@@ -109,7 +109,7 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
 
       await updateCurrentPerformer(participantId)
       await updateEventParticipants(updatedParticipants)
-    } catch (_error) {
+    } catch {
       setError("Failed to update current performer")
     } finally {
       setLoading(false)

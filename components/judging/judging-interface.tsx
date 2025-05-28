@@ -1,8 +1,19 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { collection, addDoc, doc, onSnapshot, query, where, getDocs, updateDoc, getDoc } from "firebase/firestore"
+import {
+  collection,
+  addDoc,
+  doc,
+  onSnapshot,
+  query,
+  where,
+  getDocs,
+  updateDoc,
+  getDoc,
+  Timestamp,
+} from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
@@ -11,7 +22,19 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Slider } from "@/components/ui/slider"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ArrowLeft, Gavel, Star, CheckCircle, AlertCircle, Loader2, Play, Clock, Edit, Save, Award } from "lucide-react"
+import {
+  ArrowLeft,
+  Gavel,
+  Star,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  Play,
+  Clock,
+  Edit,
+  Save,
+  Award,
+} from "lucide-react"
 import type { Event, Criteria, Participant, Criterion, SpecialAward } from "@/types"
 
 interface ParticipantScore {
@@ -22,7 +45,7 @@ interface ParticipantScore {
   totalScore: number
   submitted: boolean
   scoreDocId?: string // For updating existing scores
-  submittedAt?: any
+  submittedAt?: Timestamp
 }
 
 interface JudgingInterfaceProps {
@@ -68,15 +91,7 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
     return () => unsubscribe()
   }, [initialEvent])
 
-  useEffect(() => {
-    if (event && currentPerformer) {
-      loadExistingScores()
-      loadSpecialAwardCriteria()
-    }
-    setLoading(false)
-  }, [event, currentPerformer, criteria, user])
-
-  const loadExistingScores = async () => {
+  const loadExistingScores = useCallback(async () => {
     if (!currentPerformer || !criteria || !user || !event) return
 
     setLoadingScores(true)
@@ -159,9 +174,9 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
     } finally {
       setLoadingScores(false)
     }
-  }
+  }, [currentPerformer, criteria, user, event])
 
-  const initializeNewScoring = () => {
+  const initializeNewScoring = useCallback(() => {
     if (!currentPerformer || !criteria) return
 
     const participantScores: Record<string, number> = {}
@@ -180,7 +195,7 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
         submitted: false,
       },
     }))
-  }
+  }, [currentPerformer, criteria])
 
   const updateScore = (participantId: string, criterionId: string, score: number) => {
     setScores((prev) => {
@@ -197,10 +212,10 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
 
       // Calculate total score
       let totalScore = 0
-      for (const criterionId in updated[participantId].scores) {
-        const criterion = criteria?.criteria.find((c) => c.id === criterionId)
+      for (const critId in updated[participantId].scores) {
+        const criterion = criteria?.criteria.find((c) => c.id === critId)
         if (criterion) {
-          totalScore += (updated[participantId].scores[criterionId] * criterion.percentage) / 100
+          totalScore += (updated[participantId].scores[critId] * criterion.percentage) / 100
         }
       }
       updated[participantId].totalScore = totalScore
@@ -284,7 +299,7 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
   const canSubmit = currentScore && Object.values(currentScore.scores).every((s) => s > 0) && !currentScore.submitted
   const hasExistingScore = Boolean(currentScore?.scoreDocId && currentScore?.submitted && !isEditing)
 
-  const loadSpecialAwardCriteria = async () => {
+  const loadSpecialAwardCriteria = useCallback(async () => {
     if (!event) return
 
     try {
@@ -309,7 +324,16 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
     } catch (error) {
       console.error("Error loading special award criteria:", error)
     }
-  }
+  }, [event])
+
+  // Run these when their dependencies change
+  useEffect(() => {
+    if (event && currentPerformer) {
+      loadExistingScores()
+      loadSpecialAwardCriteria()
+    }
+    setLoading(false)
+  }, [event, currentPerformer, criteria, user, loadExistingScores, loadSpecialAwardCriteria])
 
   if (!event) {
     return (
@@ -343,7 +367,9 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
         <div className="text-center">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-red-600 mb-4">No Judging Criteria</h1>
-          <p className="text-gray-600 mb-4">This event does not have judging criteria set up.</p>
+          <p className="text-gray-600 mb-4">
+            This event does not have judging criteria set up.
+          </p>
           <Button onClick={() => router.push("/")} variant="outline">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
@@ -630,7 +656,7 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
                 {hasExistingScore ? (
                   <div className="text-center">
                     <p className="text-gray-600 mb-4">
-                      You have already scored this team. Click "Edit Score" above to make changes.
+                      You have already scored this team. Click &quot;Edit Score&quot; above to make changes.
                     </p>
                     <Button onClick={() => router.push("/")} variant="outline" size="lg">
                       Return to Dashboard

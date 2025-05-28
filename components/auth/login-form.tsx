@@ -31,8 +31,12 @@ export default function LoginForm() {
       } else {
         await signInWithEmailAndPassword(auth, email, password)
       }
-    } catch (error: any) {
-      setError(error.message || "An error occurred during authentication")
+    } catch (err) {
+      const errorMessage =
+        err && typeof err === "object" && "message" in err && typeof err.message === "string"
+          ? err.message
+          : "An error occurred during authentication"
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -127,7 +131,9 @@ export default function LoginForm() {
                 disabled={loading}
                 className="w-full text-gray-600 hover:text-gray-800 hover:bg-gray-50"
               >
-                {isSignUp ? "Already have an account? Sign In" : "Need an account? Sign Up"}
+                {isSignUp
+                  ? "Already have an account? Sign In"
+                  : "Need an account? Sign Up"}
               </Button>
             </CardFooter>
           </form>
@@ -135,7 +141,9 @@ export default function LoginForm() {
 
         {/* Footer */}
         <div className="text-center space-y-2">
-          <p className="text-gray-600 text-sm italic">"Tracing Roots, Bridging Generations: Weaving Oriental Mindoro's Living Heritage"</p>
+          <p className="text-gray-600 text-sm italic">
+            &quot;Tracing Roots, Bridging Generations: Weaving Oriental Mindoro&apos;s Living Heritage&quot;
+          </p>
           <p className="text-gray-500 text-xs">&copy; {new Date().getFullYear()} KULTOURA Platform</p>
         </div>
       </div>

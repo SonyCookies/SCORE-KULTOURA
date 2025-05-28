@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { Button } from "@/components/ui/button"
@@ -41,6 +41,8 @@ interface Criterion {
   description: string
   percentage: number
   maxScore: number
+  isSpecialAward?: boolean
+  specialAwardId?: string
 }
 
 interface SpecialAwardsManagementProps {
@@ -97,7 +99,7 @@ export default function SpecialAwardsManagement({
       basedOnCriterion: "costume_props",
     },
     {
-      name: "People's Choice Award",
+      name: "People&apos;s Choice Award",
       description: "Most popular performance as voted by the audience",
       icon: "trophy",
       type: "new" as const,
@@ -116,14 +118,7 @@ export default function SpecialAwardsManagement({
     },
   ]
 
-  useEffect(() => {
-    if (isOpen) {
-      loadSpecialAwards()
-      loadExistingCriteria()
-    }
-  }, [isOpen, eventId])
-
-  const loadSpecialAwards = async () => {
+  const loadSpecialAwards = useCallback(async () => {
     setLoadingAwards(true)
     try {
       const awardsDoc = await getDoc(doc(db, "specialAwards", eventId))
@@ -138,9 +133,9 @@ export default function SpecialAwardsManagement({
     } finally {
       setLoadingAwards(false)
     }
-  }
+  }, [eventId])
 
-  const loadExistingCriteria = async () => {
+  const loadExistingCriteria = useCallback(async () => {
     try {
       const criteriaDoc = await getDoc(doc(db, "eventCriteria", eventId))
       if (criteriaDoc.exists()) {
@@ -149,7 +144,14 @@ export default function SpecialAwardsManagement({
     } catch (error) {
       console.error("Error loading criteria:", error)
     }
-  }
+  }, [eventId])
+
+  useEffect(() => {
+    if (isOpen) {
+      loadSpecialAwards()
+      loadExistingCriteria()
+    }
+  }, [isOpen, loadSpecialAwards, loadExistingCriteria])
 
   const addPredefinedAward = (predefined: (typeof predefinedAwards)[0]) => {
     setNewAward({
@@ -175,7 +177,10 @@ export default function SpecialAwardsManagement({
       return
     }
 
-    if (newAward.type === "new" && (!newAward.criterionName.trim() || !newAward.criterionDescription.trim())) {
+    if (
+      newAward.type === "new" &&
+      (!newAward.criterionName.trim() || !newAward.criterionDescription.trim())
+    ) {
       setError("Please fill in criterion details for new awards")
       return
     }
@@ -214,12 +219,10 @@ export default function SpecialAwardsManagement({
         updatedAt: new Date(),
       })
 
-      // If it's a new criterion, we need to update the event criteria as well
       if (newAward.type === "new") {
         await addNewCriterionToEvent(award)
       }
 
-      // Reset form
       setNewAward({
         name: "",
         description: "",
@@ -245,14 +248,13 @@ export default function SpecialAwardsManagement({
       const criteriaDoc = await getDoc(doc(db, "eventCriteria", eventId))
 
       if (criteriaDoc.exists()) {
-        const currentCriteria = criteriaDoc.data().criteria || []
+        const currentCriteria: Criterion[] = criteriaDoc.data().criteria || []
 
-        // Add the new criterion with 0% weight (admin can adjust later)
-        const newCriterion = {
+        const newCriterion: Criterion = {
           id: `special_${award.id}`,
           name: award.criterionName || "Special Criterion",
           description: award.criterionDescription || "Special award criterion",
-          percentage: 0, // Admin needs to set this
+          percentage: 0,
           maxScore: award.maxScore,
           isSpecialAward: true,
           specialAwardId: award.id,
@@ -267,7 +269,7 @@ export default function SpecialAwardsManagement({
       }
     } catch (error) {
       console.error("Error adding new criterion:", error)
-      // Don't throw error here as the award was already saved
+      // Intentionally no throw since award was already saved
     }
   }
 
@@ -286,7 +288,6 @@ export default function SpecialAwardsManagement({
         updatedAt: new Date(),
       })
 
-      // If it was a new criterion, remove it from event criteria
       const removedAward = specialAwards.find((award) => award.id === awardId)
       if (removedAward?.type === "new") {
         await removeNewCriterionFromEvent(awardId)
@@ -306,8 +307,8 @@ export default function SpecialAwardsManagement({
       const criteriaDoc = await getDoc(doc(db, "eventCriteria", eventId))
 
       if (criteriaDoc.exists()) {
-        const currentCriteria = criteriaDoc.data().criteria || []
-        const updatedCriteria = currentCriteria.filter((c: any) => c.specialAwardId !== awardId)
+        const currentCriteria: Criterion[] = criteriaDoc.data().criteria || []
+        const updatedCriteria = currentCriteria.filter((c) => c.specialAwardId !== awardId)
 
         await updateDoc(doc(db, "eventCriteria", eventId), {
           criteria: updatedCriteria,
@@ -418,7 +419,7 @@ export default function SpecialAwardsManagement({
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-purple-700 mb-3 italic">"{award.description}"</p>
+                      <p className="text-purple-700 mb-3 italic">&quot;{award.description}&quot;</p>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         <div>
@@ -509,7 +510,6 @@ export default function SpecialAwardsManagement({
                 <CardDescription>Design your own special award for this event</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Award Name */}
                 <div className="space-y-2">
                   <Label htmlFor="awardName">Award Name *</Label>
                   <Input
@@ -520,7 +520,6 @@ export default function SpecialAwardsManagement({
                   />
                 </div>
 
-                {/* Award Description */}
                 <div className="space-y-2">
                   <Label htmlFor="awardDescription">Award Description *</Label>
                   <Textarea
@@ -532,7 +531,6 @@ export default function SpecialAwardsManagement({
                   />
                 </div>
 
-                {/* Icon Selection */}
                 <div className="space-y-2">
                   <Label>Award Icon</Label>
                   <Select value={newAward.icon} onValueChange={(value) => setNewAward({ ...newAward, icon: value })}>
@@ -552,7 +550,6 @@ export default function SpecialAwardsManagement({
                   </Select>
                 </div>
 
-                {/* Award Type */}
                 <div className="space-y-2">
                   <Label>Award Type *</Label>
                   <Select
@@ -569,7 +566,6 @@ export default function SpecialAwardsManagement({
                   </Select>
                 </div>
 
-                {/* Existing Criterion Selection */}
                 {newAward.type === "existing" && (
                   <div className="space-y-2">
                     <Label>Select Existing Criterion *</Label>
@@ -596,7 +592,6 @@ export default function SpecialAwardsManagement({
                   </div>
                 )}
 
-                {/* New Criterion Details */}
                 {newAward.type === "new" && (
                   <>
                     <div className="space-y-2">
@@ -625,10 +620,12 @@ export default function SpecialAwardsManagement({
                       <Input
                         id="maxScore"
                         type="number"
-                        min="1"
-                        max="100"
+                        min={1}
+                        max={100}
                         value={newAward.maxScore}
-                        onChange={(e) => setNewAward({ ...newAward, maxScore: Number.parseInt(e.target.value) || 10 })}
+                        onChange={(e) =>
+                          setNewAward({ ...newAward, maxScore: Number.parseInt(e.target.value) || 10 })
+                        }
                       />
                     </div>
 

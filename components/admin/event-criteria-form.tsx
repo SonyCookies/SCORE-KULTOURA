@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { doc, setDoc, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { Button } from "@/components/ui/button"
@@ -40,51 +40,52 @@ export default function EventCriteriaForm({ eventId, eventTitle, onCriteriaSaved
   const [criteria, setCriteria] = useState<Criterion[]>([])
 
   // Predefined criteria for Mazurka Mindorena Dance
-  const mazurkaCriteria: Criterion[] = [
-    {
-      id: "performance",
-      name: "Performance",
-      description: "Energy, enthusiasm, confidence, stage presence, and engagement with the audience.",
-      percentage: 20,
-      maxScore: 10,
-    },
-    {
-      id: "choreography",
-      name: "Choreography",
-      description: "Creativity, originality, synchronization, proper execution, and complexity of movements.",
-      percentage: 40,
-      maxScore: 10,
-    },
-    {
-      id: "costume_props",
-      name: "Costume and Props",
-      description: "Relevance to the festival theme, creativity, aesthetic appeal, and proper use of props.",
-      percentage: 10,
-      maxScore: 10,
-    },
-    {
-      id: "musicality",
-      name: "Musicality and Rhythm",
-      description:
-        "Synchronization of movements with music, clarity of festival beat/rhythm, and appropriateness of music selection.",
-      percentage: 10,
-      maxScore: 10,
-    },
-    {
-      id: "relevance",
-      name: "Relevance",
-      description: "Connection to the festival's history or culture, authenticity, and storytelling.",
-      percentage: 10,
-      maxScore: 10,
-    },
-    {
-      id: "audience_impact",
-      name: "Audience Impact",
-      description: "General impression of the performance, audience reaction, and lasting effect.",
-      percentage: 10,
-      maxScore: 10,
-    },
-  ]
+  const mazurkaCriteria = useMemo<Criterion[]>(() => [
+      {
+        id: "performance",
+        name: "Performance",
+        description: "Energy, enthusiasm, confidence, stage presence, and engagement with the audience.",
+        percentage: 20,
+        maxScore: 10,
+      },
+      {
+        id: "choreography",
+        name: "Choreography",
+        description: "Creativity, originality, synchronization, proper execution, and complexity of movements.",
+        percentage: 40,
+        maxScore: 10,
+      },
+      {
+        id: "costume_props",
+        name: "Costume and Props",
+        description: "Relevance to the festival theme, creativity, aesthetic appeal, and proper use of props.",
+        percentage: 10,
+        maxScore: 10,
+      },
+      {
+        id: "musicality",
+        name: "Musicality and Rhythm",
+        description:
+          "Synchronization of movements with music, clarity of festival beat/rhythm, and appropriateness of music selection.",
+        percentage: 10,
+        maxScore: 10,
+      },
+      {
+        id: "relevance",
+        name: "Relevance",
+        description: "Connection to the festival's history or culture, authenticity, and storytelling.",
+        percentage: 10,
+        maxScore: 10,
+      },
+      {
+        id: "audience_impact",
+        name: "Audience Impact",
+        description: "General impression of the performance, audience reaction, and lasting effect.",
+        percentage: 10,
+        maxScore: 10,
+      },
+    ], [])
+
 
   const loadExistingCriteria = useCallback(async () => {
     setLoadingCriteria(true)

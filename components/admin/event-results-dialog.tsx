@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useCallback } from "react"
-import { collection, query, where, getDocs, doc, getDoc, DocumentData, QueryDocumentSnapshot } from "firebase/firestore"
+import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -67,6 +67,16 @@ interface EventResultsDialogProps {
   eventTitle: string
 }
 
+interface CustomSpecialAward {
+  id: string
+  name: string
+  type: "existing" | "new"
+  basedOnCriterion?: string
+  criterionName?: string
+  description: string
+  icon: string
+}
+
 export default function EventResultsDialog({ eventId, eventTitle }: EventResultsDialogProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -89,12 +99,144 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
     }
   }
 
+  const calculateSpecialAwards = useCallback(
+    async (results: ParticipantResult[], eventCriteria: Criterion[]) => {
+      const awards: SpecialAward[] = []
+
+      try {
+        const specialAwardsDoc = await getDoc(doc(db, "specialAwards", eventId))
+        let customSpecialAwards: CustomSpecialAward[] = []
+
+        if (specialAwardsDoc.exists()) {
+          customSpecialAwards = specialAwardsDoc.data()?.awards || []
+        }
+
+        for (const customAward of customSpecialAwards) {
+          let winner = null
+          let highestScore = 0
+          let criterionId = ""
+
+          if (customAward.type === "existing" && customAward.basedOnCriterion) {
+            criterionId = customAward.basedOnCriterion
+
+            results.forEach((result) => {
+              const score = result.criteriaAverages?.[criterionId] || 0
+              if (score > highestScore) {
+                highestScore = score
+                winner = {
+                  participantId: result.participantId,
+                  participantName: result.participantName,
+                  averageScore: score,
+                }
+              }
+            })
+          } else if (customAward.type === "new") {
+            criterionId = `special_${customAward.id}`
+
+            results.forEach((result) => {
+              const score = result.criteriaAverages?.[criterionId] || 0
+              if (score > highestScore) {
+                highestScore = score
+                winner = {
+                  participantId: result.participantId,
+                  participantName: result.participantName,
+                  averageScore: score,
+                }
+              }
+            })
+          }
+
+          awards.push({
+            awardName: customAward.name,
+            criterionId,
+            criterionName:
+              customAward.type === "existing"
+                ? eventCriteria.find((c) => c.id === customAward.basedOnCriterion)?.name || customAward.basedOnCriterion || ""
+                : customAward.criterionName || "",
+            winner,
+            description: customAward.description,
+            icon: getIconComponent(customAward.icon),
+          })
+
+        }
+
+        if (customSpecialAwards.length === 0) {
+          const choreographyCriterion = eventCriteria.find(
+            (c) => c.name.toLowerCase().includes("choreography") || c.id.toLowerCase().includes("choreography"),
+          )
+          const costumeCriterion = eventCriteria.find(
+            (c) =>
+              c.name.toLowerCase().includes("costume") ||
+              c.name.toLowerCase().includes("props") ||
+              c.id.toLowerCase().includes("costume"),
+          )
+
+          if (choreographyCriterion) {
+            let bestChoreographyWinner = null
+            let highestChoreographyScore = 0
+
+            results.forEach((result) => {
+              const choreographyScore = result.criteriaAverages?.[choreographyCriterion.id] || 0
+              if (choreographyScore > highestChoreographyScore) {
+                highestChoreographyScore = choreographyScore
+                bestChoreographyWinner = {
+                  participantId: result.participantId,
+                  participantName: result.participantName,
+                  averageScore: choreographyScore,
+                }
+              }
+            })
+
+            awards.push({
+              awardName: "Best in Choreography Award",
+              criterionId: choreographyCriterion.id,
+              criterionName: choreographyCriterion.name,
+              winner: bestChoreographyWinner,
+              description: "Exceptional originality, synchronization, and storytelling through movement",
+              icon: <Star className="h-5 w-5 text-purple-500" />,
+            })
+          }
+
+          if (costumeCriterion) {
+            let bestCostumeWinner = null
+            let highestCostumeScore = 0
+
+            results.forEach((result) => {
+              const costumeScore = result.criteriaAverages?.[costumeCriterion.id] || 0
+              if (costumeScore > highestCostumeScore) {
+                highestCostumeScore = costumeScore
+                bestCostumeWinner = {
+                  participantId: result.participantId,
+                  participantName: result.participantName,
+                  averageScore: costumeScore,
+                }
+              }
+            })
+
+            awards.push({
+              awardName: "Best in Costume and Props Award",
+              criterionId: costumeCriterion.id,
+              criterionName: costumeCriterion.name,
+              winner: bestCostumeWinner,
+              description: "Most authentic, well-designed, and culturally representative attire and props",
+              icon: <Crown className="h-5 w-5 text-amber-500" />,
+            })
+          }
+        }
+      } catch (error) {
+        console.error("Error calculating special awards:", error)
+      }
+
+      setSpecialAwards(awards)
+    },
+    [eventId],
+  )
+
   const loadResults = useCallback(async () => {
     setLoading(true)
     setError("")
 
     try {
-      // Load event criteria first
       const criteriaDoc = await getDoc(doc(db, "eventCriteria", eventId))
       let eventCriteria: Criterion[] = []
 
@@ -103,7 +245,6 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
         setCriteria(eventCriteria)
       }
 
-      // Query all scores for this event
       const scoresQuery = query(collection(db, "judgingScores"), where("eventId", "==", eventId))
       const scoresSnapshot = await getDocs(scoresQuery)
 
@@ -117,7 +258,6 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
 
       const scores: JudgingScore[] = scoresSnapshot.docs.map((doc) => {
         const data = doc.data()
-        // Normalize submittedAt to Date if possible
         let submittedAt: Date | null = null
         if (data.submittedAt?.toDate) {
           submittedAt = data.submittedAt.toDate()
@@ -141,7 +281,6 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
 
       setAllScores(scores)
 
-      // Group scores by participant
       const participantMap = new Map<string, JudgingScore[]>()
       scores.forEach((score) => {
         if (!participantMap.has(score.participantId)) {
@@ -150,13 +289,11 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
         participantMap.get(score.participantId)!.push(score)
       })
 
-      // Calculate results for each participant
       const participantResults: ParticipantResult[] = Array.from(participantMap.entries()).map(
         ([participantId, participantScores]) => {
           const averageScore =
             participantScores.reduce((sum, score) => sum + score.totalScore, 0) / participantScores.length
 
-          // Calculate average scores for each criterion including special awards
           const criteriaAverages: Record<string, number> = {}
 
           if (eventCriteria.length > 0) {
@@ -172,7 +309,6 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
             })
           }
 
-          // Also calculate averages for special award criteria
           const allCriterionIds = new Set<string>()
           scores.forEach((score) => {
             Object.keys(score.scores).forEach((id) => allCriterionIds.add(id))
@@ -202,7 +338,6 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
         },
       )
 
-      // Sort by average score (highest first) and assign ranks
       participantResults.sort((a, b) => b.averageScore - a.averageScore)
       participantResults.forEach((result, index) => {
         result.rank = index + 1
@@ -210,9 +345,8 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
 
       setResults(participantResults)
 
-      // Calculate special awards for Mazurka events
       if (eventTitle.toUpperCase().includes("MAZURKA") && eventCriteria.length > 0) {
-        calculateSpecialAwards(participantResults, eventCriteria)
+        await calculateSpecialAwards(participantResults, eventCriteria)
       } else {
         setSpecialAwards([])
       }
@@ -222,139 +356,7 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
     } finally {
       setLoading(false)
     }
-  }, [eventId, eventTitle])
-
-  const calculateSpecialAwards = async (results: ParticipantResult[], eventCriteria: Criterion[]) => {
-    const awards: SpecialAward[] = []
-
-    try {
-      // Load custom special awards
-      const specialAwardsDoc = await getDoc(doc(db, "specialAwards", eventId))
-      let customSpecialAwards: any[] = []
-
-      if (specialAwardsDoc.exists()) {
-        customSpecialAwards = specialAwardsDoc.data()?.awards || []
-      }
-
-      // Process custom special awards
-      for (const customAward of customSpecialAwards) {
-        let winner = null
-        let highestScore = 0
-        let criterionId = ""
-
-        if (customAward.type === "existing" && customAward.basedOnCriterion) {
-          criterionId = customAward.basedOnCriterion
-
-          results.forEach((result) => {
-            const score = result.criteriaAverages?.[criterionId] || 0
-            if (score > highestScore) {
-              highestScore = score
-              winner = {
-                participantId: result.participantId,
-                participantName: result.participantName,
-                averageScore: score,
-              }
-            }
-          })
-        } else if (customAward.type === "new") {
-          criterionId = `special_${customAward.id}`
-
-          results.forEach((result) => {
-            const score = result.criteriaAverages?.[criterionId] || 0
-            if (score > highestScore) {
-              highestScore = score
-              winner = {
-                participantId: result.participantId,
-                participantName: result.participantName,
-                averageScore: score,
-              }
-            }
-          })
-        }
-
-        awards.push({
-          awardName: customAward.name,
-          criterionId,
-          criterionName:
-            customAward.type === "existing"
-              ? eventCriteria.find((c) => c.id === customAward.basedOnCriterion)?.name || customAward.basedOnCriterion
-              : customAward.criterionName,
-          winner,
-          description: customAward.description,
-          icon: getIconComponent(customAward.icon),
-        })
-      }
-
-      // Fallback to default Mazurka awards if no custom awards exist
-      if (customSpecialAwards.length === 0) {
-        const choreographyCriterion = eventCriteria.find(
-          (c) => c.name.toLowerCase().includes("choreography") || c.id.toLowerCase().includes("choreography"),
-        )
-        const costumeCriterion = eventCriteria.find(
-          (c) =>
-            c.name.toLowerCase().includes("costume") ||
-            c.name.toLowerCase().includes("props") ||
-            c.id.toLowerCase().includes("costume"),
-        )
-
-        if (choreographyCriterion) {
-          let bestChoreographyWinner = null
-          let highestChoreographyScore = 0
-
-          results.forEach((result) => {
-            const choreographyScore = result.criteriaAverages?.[choreographyCriterion.id] || 0
-            if (choreographyScore > highestChoreographyScore) {
-              highestChoreographyScore = choreographyScore
-              bestChoreographyWinner = {
-                participantId: result.participantId,
-                participantName: result.participantName,
-                averageScore: choreographyScore,
-              }
-            }
-          })
-
-          awards.push({
-            awardName: "Best in Choreography Award",
-            criterionId: choreographyCriterion.id,
-            criterionName: choreographyCriterion.name,
-            winner: bestChoreographyWinner,
-            description: "Exceptional originality, synchronization, and storytelling through movement",
-            icon: <Star className="h-5 w-5 text-purple-500" />,
-          })
-        }
-
-        if (costumeCriterion) {
-          let bestCostumeWinner = null
-          let highestCostumeScore = 0
-
-          results.forEach((result) => {
-            const costumeScore = result.criteriaAverages?.[costumeCriterion.id] || 0
-            if (costumeScore > highestCostumeScore) {
-              highestCostumeScore = costumeScore
-              bestCostumeWinner = {
-                participantId: result.participantId,
-                participantName: result.participantName,
-                averageScore: costumeScore,
-              }
-            }
-          })
-
-          awards.push({
-            awardName: "Best in Costume and Props Award",
-            criterionId: costumeCriterion.id,
-            criterionName: costumeCriterion.name,
-            winner: bestCostumeWinner,
-            description: "Most authentic, well-designed, and culturally representative attire and props",
-            icon: <Crown className="h-5 w-5 text-amber-500" />,
-          })
-        }
-      }
-    } catch (error) {
-      console.error("Error calculating special awards:", error)
-    }
-
-    setSpecialAwards(awards)
-  }
+  }, [eventId, eventTitle, calculateSpecialAwards])
 
   useEffect(() => {
     if (isOpen) {
@@ -487,7 +489,6 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
                             </p>
                             <p className="text-gray-500 text-sm">Judged by {result.judgeCount} judge(s)</p>
 
-                            {/* Show special awards won by this participant */}
                             {hasSpecialAwards && (
                               <div className="mt-2 flex flex-wrap gap-1">
                                 {specialAwards

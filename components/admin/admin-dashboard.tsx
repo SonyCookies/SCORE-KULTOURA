@@ -31,32 +31,7 @@ import EventCriteriaForm from "./event-criteria-form"
 import ParticipantManagement from "./participant-management"
 import EventResultsDialog from "./event-results-dialog"
 import SpecialAwardsManagement from "./special-awards-management"
-
-interface Event {
-  id: string
-  title: string
-  description: string
-  category: string
-  status: "draft" | "active" | "completed"
-  adminActivated: boolean
-  showToJudges: boolean
-  participants: any[]
-  maxParticipants?: number
-  duration?: string
-  venue?: string
-  requirements?: string
-  createdAt: any
-  startTime?: any
-  hasCriteria?: boolean
-}
-
-interface Judge {
-  id: string
-  email: string
-  fullName?: string
-  status: "active" | "inactive"
-  lastLogin?: any
-}
+import type { Event, Judge } from "@/types"
 
 interface LoadingState {
   isLoading: boolean
@@ -99,7 +74,7 @@ export default function AdminDashboard() {
           try {
             const criteriaDoc = await getDoc(doc(db, "eventCriteria", event.id))
             criteriaStatus[event.id] = criteriaDoc.exists()
-          } catch (error) {
+          } catch (_error) {
             criteriaStatus[event.id] = false
           }
         }
@@ -108,8 +83,8 @@ export default function AdminDashboard() {
         setEvents(eventsData.sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds))
         setLoading(false)
       },
-      (error) => {
-        console.error("Error listening to events:", error)
+      (eventError) => {
+        console.error("Error listening to events:", eventError)
         setError("Failed to load events")
         setLoading(false)
       },
@@ -126,8 +101,8 @@ export default function AdminDashboard() {
         })) as Judge[]
         setJudges(judgesData)
       },
-      (error) => {
-        console.error("Error listening to judges:", error)
+      (judgeError) => {
+        console.error("Error listening to judges:", judgeError)
       },
     )
 
@@ -140,8 +115,8 @@ export default function AdminDashboard() {
   const handleSignOut = async () => {
     try {
       await signOut()
-    } catch (error) {
-      console.error("Error signing out:", error)
+    } catch (signOutError) {
+      console.error("Error signing out:", signOutError)
     }
   }
 
@@ -186,8 +161,8 @@ export default function AdminDashboard() {
 
       // Add a small delay to show the loading state
       await new Promise((resolve) => setTimeout(resolve, 1000))
-    } catch (error) {
-      console.error("Error toggling event activation:", error)
+    } catch (toggleError) {
+      console.error("Error toggling event activation:", toggleError)
       setError("Failed to update event. Please try again.")
     } finally {
       setLoadingState({
@@ -213,14 +188,14 @@ export default function AdminDashboard() {
         // Also delete criteria if exists
         try {
           await deleteDoc(doc(db, "eventCriteria", eventId))
-        } catch (error) {
+        } catch (_criteriaError) {
           // Criteria might not exist, ignore error
         }
 
         // Add a small delay to show the loading state
         await new Promise((resolve) => setTimeout(resolve, 800))
-      } catch (error) {
-        console.error("Error deleting event:", error)
+      } catch (deleteError) {
+        console.error("Error deleting event:", deleteError)
         setError("Failed to delete event. Please try again.")
       } finally {
         setLoadingState({
@@ -240,7 +215,7 @@ export default function AdminDashboard() {
       try {
         const criteriaDoc = await getDoc(doc(db, "eventCriteria", event.id))
         criteriaStatus[event.id] = criteriaDoc.exists()
-      } catch (error) {
+      } catch (_refreshError) {
         criteriaStatus[event.id] = false
       }
     }
@@ -248,7 +223,6 @@ export default function AdminDashboard() {
   }
 
   const activeEvents = events.filter((e) => e.adminActivated && e.showToJudges)
-  const draftEvents = events.filter((e) => !e.adminActivated)
   const activeJudges = judges.filter((j) => j.status === "active")
 
   if (loading) {

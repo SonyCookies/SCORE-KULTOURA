@@ -12,39 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Slider } from "@/components/ui/slider"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ArrowLeft, Gavel, Star, CheckCircle, AlertCircle, Loader2, Play, Clock, Edit, Save, Award } from "lucide-react"
-
-interface Event {
-  id: string
-  title: string
-  description: string
-  category: string
-  venue?: string
-  duration?: string
-  requirements?: string
-  participants: Participant[]
-  currentPerformer?: string | null
-  startTime: any
-}
-
-interface Participant {
-  id: string
-  name: string
-  status: "waiting" | "performing" | "completed"
-  addedAt: Date
-}
-
-interface Criterion {
-  id: string
-  name: string
-  description: string
-  percentage: number
-  maxScore: number
-}
-
-interface Criteria {
-  criteria: Criterion[]
-  totalPercentage: number
-}
+import type { Event, Criteria, Participant, Criterion, SpecialAward } from "@/types"
 
 interface ParticipantScore {
   participantId: string
@@ -74,7 +42,7 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
   const [showSubmitDialog, setShowSubmitDialog] = useState(false)
   const [error, setError] = useState("")
   const [isEditing, setIsEditing] = useState(false)
-  const [specialAwardCriteria, setSpecialAwardCriteria] = useState<any[]>([])
+  const [specialAwardCriteria, setSpecialAwardCriteria] = useState<Criterion[]>([])
 
   // Listen for real-time updates to the event
   useEffect(() => {
@@ -115,16 +83,16 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
     try {
       // Load special awards criteria
       const specialAwardsDoc = await getDoc(doc(db, "specialAwards", event.id))
-      let additionalCriteria: any[] = []
+      let additionalCriteria: Criterion[] = []
 
       if (specialAwardsDoc.exists()) {
         const specialAwards = specialAwardsDoc.data().awards || []
         additionalCriteria = specialAwards
-          .filter((award: any) => award.type === "new")
-          .map((award: any) => ({
+          .filter((award: SpecialAward) => award.type === "new")
+          .map((award: SpecialAward) => ({
             id: `special_${award.id}`,
-            name: award.criterionName,
-            description: award.criterionDescription,
+            name: award.criterionName || "",
+            description: award.criterionDescription || "",
             percentage: 0, // Special awards don't count toward main score
             maxScore: award.maxScore,
             isSpecialAward: true,
@@ -324,11 +292,11 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
       if (specialAwardsDoc.exists()) {
         const specialAwards = specialAwardsDoc.data().awards || []
         const newCriteria = specialAwards
-          .filter((award: any) => award.type === "new")
-          .map((award: any) => ({
+          .filter((award: SpecialAward) => award.type === "new")
+          .map((award: SpecialAward) => ({
             id: `special_${award.id}`,
-            name: award.criterionName,
-            description: award.criterionDescription,
+            name: award.criterionName || "",
+            description: award.criterionDescription || "",
             percentage: 0,
             maxScore: award.maxScore,
             isSpecialAward: true,

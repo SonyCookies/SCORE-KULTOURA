@@ -19,22 +19,7 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Users, Plus, Play, Pause, CheckCircle, Clock, Loader2, Trash2 } from "lucide-react"
-
-interface Participant {
-  id: string
-  name: string
-  status: "waiting" | "performing" | "completed"
-  addedAt: Date
-}
-
-interface Event {
-  id: string
-  title: string
-  participants: Participant[]
-  currentPerformer?: string | null
-  adminActivated: boolean
-  showToJudges: boolean
-}
+import type { Event, Participant } from "@/types"
 
 interface ParticipantManagementProps {
   event: Event
@@ -60,6 +45,7 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
   const addParticipant = async (participantName: string) => {
     if (!participantName.trim()) return
 
+    // In the addParticipant function, update the creation of newParticipant to handle Timestamp:
     const newParticipant: Participant = {
       id: `participant_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: participantName.trim(),
@@ -89,6 +75,7 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
   const addAllPredefined = async () => {
     setLoading(true)
     try {
+      // In the addAllPredefined function, update the creation of newParticipants:
       const newParticipants: Participant[] = predefinedParticipants.map((name) => ({
         id: `participant_${Date.now()}_${name}`,
         name,
@@ -190,7 +177,7 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
           Manage Participants ({participants.length})
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
@@ -336,7 +323,12 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
                         {getStatusIcon(participant.status)}
                         <div>
                           <div className="font-medium text-gray-900">{participant.name}</div>
-                          <div className="text-sm text-gray-500">Added: {participant.addedAt.toLocaleString()}</div>
+                          <div className="text-sm text-gray-500">
+                            Added:{" "}
+                            {participant.addedAt instanceof Date
+                              ? participant.addedAt.toLocaleString()
+                              : participant.addedAt.toDate().toLocaleString()}
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

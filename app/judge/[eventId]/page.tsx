@@ -1,45 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { doc, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { useAuth } from "@/contexts/auth-context"
 import JudgingInterface from "@/components/judging/judging-interface"
 import KultouraLoading from "@/components/kultoura-loading"
-
-// Define the Event interface with all required properties
-interface Event {
-  id: string
-  title: string
-  description: string
-  category: string
-  participants: any[]
-  maxParticipants?: number
-  duration?: string
-  venue?: string
-  requirements?: string
-  startTime: any
-  adminActivated: boolean
-  showToJudges: boolean
-  createdAt: any
-}
-
-// Define the Criteria interface
-interface Criteria {
-  eventId: string
-  eventTitle: string
-  criteria: Array<{
-    id: string
-    name: string
-    description: string
-    percentage: number
-    maxScore: number
-  }>
-  totalPercentage: number
-  createdAt: any
-  updatedAt: any
-}
+import type { Event, Criteria } from "@/types"
 
 export default function JudgingPage() {
   const params = useParams()
@@ -50,16 +18,7 @@ export default function JudgingPage() {
   const [criteria, setCriteria] = useState<Criteria | null>(null)
   const [error, setError] = useState("")
 
-  useEffect(() => {
-    if (!user || !params.eventId) {
-      router.push("/")
-      return
-    }
-
-    loadJudgingData()
-  }, [user, params.eventId, router])
-
-  const loadJudgingData = async () => {
+  const loadJudgingData = useCallback(async () => {
     try {
       const eventId = params.eventId as string
 
@@ -95,7 +54,16 @@ export default function JudgingPage() {
       setError("Failed to load judging data")
       setLoading(false)
     }
-  }
+  }, [params.eventId])
+
+  useEffect(() => {
+    if (!user || !params.eventId) {
+      router.push("/")
+      return
+    }
+
+    loadJudgingData()
+  }, [user, params.eventId, router, loadJudgingData])
 
   if (loading) {
     return <KultouraLoading />

@@ -86,13 +86,8 @@ export default function EventCriteriaForm({ eventId, eventTitle, onCriteriaSaved
     },
   ]
 
-  // Load existing criteria when dialog opens
-  useEffect(() => {
-    if (isOpen) {
-      loadExistingCriteria()
-    }
-  }, [isOpen, eventId])
 
+  
   const loadExistingCriteria = async () => {
     setLoadingCriteria(true)
     try {
@@ -113,6 +108,14 @@ export default function EventCriteriaForm({ eventId, eventTitle, onCriteriaSaved
       setLoadingCriteria(false)
     }
   }
+
+  // Load existing criteria when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      loadExistingCriteria()
+    }
+  }, [isOpen, eventId])
+
 
   const addCriterion = () => {
     const newCriterion: Criterion = {
@@ -388,7 +391,7 @@ export default function EventCriteriaForm({ eventId, eventTitle, onCriteriaSaved
                       </tr>
                     </thead>
                     <tbody>
-                      {criteria.map((criterion, index) => (
+                      {criteria.map((criterion) => (
                         <tr key={criterion.id} className="border-b">
                           <td className="py-2 font-medium">{criterion.name}</td>
                           <td className="py-2 text-gray-600">{criterion.description}</td>

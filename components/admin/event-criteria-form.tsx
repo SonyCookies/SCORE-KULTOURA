@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { doc, setDoc, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { Button } from "@/components/ui/button"
@@ -86,16 +86,13 @@ export default function EventCriteriaForm({ eventId, eventTitle, onCriteriaSaved
     },
   ]
 
-
-  
-  const loadExistingCriteria = async () => {
+  const loadExistingCriteria = useCallback(async () => {
     setLoadingCriteria(true)
     try {
       const criteriaDoc = await getDoc(doc(db, "eventCriteria", eventId))
       if (criteriaDoc.exists()) {
         setCriteria(criteriaDoc.data().criteria || [])
       } else {
-        // If no criteria exist and this is Mazurka event, load predefined criteria
         if (eventTitle.toUpperCase().includes("MAZURKA")) {
           setCriteria(mazurkaCriteria)
         } else {
@@ -107,14 +104,13 @@ export default function EventCriteriaForm({ eventId, eventTitle, onCriteriaSaved
     } finally {
       setLoadingCriteria(false)
     }
-  }
+  }, [eventId, eventTitle, mazurkaCriteria])
 
-  // Load existing criteria when dialog opens
   useEffect(() => {
     if (isOpen) {
       loadExistingCriteria()
     }
-  }, [isOpen, eventId])
+  }, [isOpen, loadExistingCriteria])
 
 
   const addCriterion = () => {

@@ -45,7 +45,6 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
   const addParticipant = async (participantName: string) => {
     if (!participantName.trim()) return
 
-    // In the addParticipant function, update the creation of newParticipant to handle Timestamp:
     const newParticipant: Participant = {
       id: `participant_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: participantName.trim(),
@@ -75,7 +74,6 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
   const addAllPredefined = async () => {
     setLoading(true)
     try {
-      // In the addAllPredefined function, update the creation of newParticipants:
       const newParticipants: Participant[] = predefinedParticipants.map((name) => ({
         id: `participant_${Date.now()}_${name}`,
         name,
@@ -86,7 +84,7 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
       const updatedParticipants = [...participants, ...newParticipants]
       setParticipants(updatedParticipants)
       await updateEventParticipants(updatedParticipants)
-    } catch (error) {
+    } catch (_error) {
       setError("Failed to add participants")
     } finally {
       setLoading(false)
@@ -96,7 +94,6 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
   const setCurrentPerformerHandler = async (participantId: string | null) => {
     setLoading(true)
     try {
-      // Update participant statuses
       const updatedParticipants = participants.map((p) => ({
         ...p,
         status:
@@ -112,7 +109,7 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
 
       await updateCurrentPerformer(participantId)
       await updateEventParticipants(updatedParticipants)
-    } catch (error) {
+    } catch (_error) {
       setError("Failed to update current performer")
     } finally {
       setLoading(false)
@@ -126,8 +123,8 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
         updatedAt: new Date(),
       })
       onEventUpdated?.()
-    } catch (error) {
-      console.error("Error updating participants:", error)
+    } catch (_error) {
+      console.error("Error updating participants:", _error)
       setError("Failed to update participants")
     }
   }
@@ -139,8 +136,8 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
         updatedAt: new Date(),
       })
       onEventUpdated?.()
-    } catch (error) {
-      console.error("Error updating current performer:", error)
+    } catch (_error) {
+      console.error("Error updating current performer:", _error)
       setError("Failed to update current performer")
     }
   }
@@ -187,14 +184,12 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Error Alert */}
           {error && (
             <Alert className="border-red-200 bg-red-50">
               <AlertDescription className="text-red-700">{error}</AlertDescription>
             </Alert>
           )}
 
-          {/* Quick Add All */}
           <Card className="border-blue-200 bg-blue-50">
             <CardHeader className="pb-3">
               <CardTitle className="text-blue-800 text-lg">Quick Add All Teams</CardTitle>
@@ -216,7 +211,6 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
             </CardContent>
           </Card>
 
-          {/* Add Individual Participant */}
           <Card className="border-gray-200">
             <CardHeader>
               <CardTitle>Add Individual Participant</CardTitle>
@@ -241,7 +235,6 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
                 </div>
               </div>
 
-              {/* Quick add buttons for predefined teams */}
               <div className="mt-3">
                 <Label>Quick Add:</Label>
                 <div className="flex flex-wrap gap-1 mt-1">
@@ -261,7 +254,6 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
             </CardContent>
           </Card>
 
-          {/* Current Performer Selection */}
           <Card className="border-green-200 bg-green-50">
             <CardHeader>
               <CardTitle className="text-green-800">Current Performer</CardTitle>
@@ -298,16 +290,13 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
             </CardContent>
           </Card>
 
-          {/* Participants List */}
           <Card className="border-gray-200">
             <CardHeader>
               <CardTitle>Participants ({participants.length})</CardTitle>
             </CardHeader>
             <CardContent>
               {participants.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  No participants added yet. Add teams to get started.
-                </div>
+                <div className="text-center py-8 text-gray-500">No participants added yet. Add teams to get started.</div>
               ) : (
                 <div className="space-y-2">
                   {participants.map((participant) => (
@@ -350,7 +339,6 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
             </CardContent>
           </Card>
 
-          {/* Performance Summary */}
           {participants.length > 0 && (
             <Card className="border-gray-200">
               <CardHeader>
@@ -381,7 +369,6 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
             </Card>
           )}
 
-          {/* Close Button */}
           <div className="flex justify-end pt-4">
             <Button onClick={() => setIsOpen(false)}>Close</Button>
           </div>

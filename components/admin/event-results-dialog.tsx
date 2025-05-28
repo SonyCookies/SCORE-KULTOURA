@@ -1,9 +1,7 @@
 "use client"
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
-import { collection, query, where, getDocs, doc, getDoc } from "firebase/firestore"
+import React, { useState, useEffect, useCallback } from "react"
+import { collection, query, where, getDocs, doc, getDoc, DocumentData, QueryDocumentSnapshot } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -29,7 +27,7 @@ interface JudgingScore {
   participantName: string
   scores: Record<string, number>
   totalScore: number
-  submittedAt: any
+  submittedAt?: Date | null
   eventTitle: string
 }
 
@@ -78,7 +76,20 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
   const [criteria, setCriteria] = useState<Criterion[]>([])
   const [error, setError] = useState("")
 
-  const loadResults = async () => {
+  const getIconComponent = (iconName: string): React.ReactNode => {
+    switch (iconName) {
+      case "Star":
+        return <Star className="h-5 w-5 text-purple-500" />
+      case "Crown":
+        return <Crown className="h-5 w-5 text-amber-500" />
+      case "Award":
+        return <Award className="h-5 w-5 text-blue-500" />
+      default:
+        return <Award className="h-5 w-5 text-blue-500" /> // Default icon
+    }
+  }
+
+  const loadResults = useCallback(async () => {
     setLoading(true)
     setError("")
 
@@ -88,7 +99,7 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
       let eventCriteria: Criterion[] = []
 
       if (criteriaDoc.exists()) {
-        eventCriteria = criteriaDoc.data().criteria || []
+        eventCriteria = criteriaDoc.data()?.criteria || []
         setCriteria(eventCriteria)
       }
 
@@ -104,10 +115,29 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
         return
       }
 
-      const scores: JudgingScore[] = scoresSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as JudgingScore[]
+      const scores: JudgingScore[] = scoresSnapshot.docs.map((doc) => {
+        const data = doc.data()
+        // Normalize submittedAt to Date if possible
+        let submittedAt: Date | null = null
+        if (data.submittedAt?.toDate) {
+          submittedAt = data.submittedAt.toDate()
+        } else if (data.submittedAt instanceof Date) {
+          submittedAt = data.submittedAt
+        }
+
+        return {
+          id: doc.id,
+          eventId: data.eventId,
+          judgeId: data.judgeId,
+          judgeEmail: data.judgeEmail,
+          participantId: data.participantId,
+          participantName: data.participantName,
+          scores: data.scores,
+          totalScore: data.totalScore,
+          submittedAt,
+          eventTitle: data.eventTitle,
+        }
+      })
 
       setAllScores(scores)
 
@@ -143,13 +173,13 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
           }
 
           // Also calculate averages for special award criteria
-          const allCriterionIds = new Set()
+          const allCriterionIds = new Set<string>()
           scores.forEach((score) => {
             Object.keys(score.scores).forEach((id) => allCriterionIds.add(id))
           })
 
           allCriterionIds.forEach((criterionId) => {
-            if (typeof criterionId === "string" && !criteriaAverages[criterionId]) {
+            if (!criteriaAverages[criterionId]) {
               const criterionScores = participantScores
                 .map((score) => score.scores[criterionId] || 0)
                 .filter((score) => score > 0)
@@ -192,7 +222,7 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
     } finally {
       setLoading(false)
     }
-  }
+  }, [eventId, eventTitle])
 
   const calculateSpecialAwards = async (results: ParticipantResult[], eventCriteria: Criterion[]) => {
     const awards: SpecialAward[] = []
@@ -203,7 +233,7 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
       let customSpecialAwards: any[] = []
 
       if (specialAwardsDoc.exists()) {
-        customSpecialAwards = specialAwardsDoc.data().awards || []
+        customSpecialAwards = specialAwardsDoc.data()?.awards || []
       }
 
       // Process custom special awards
@@ -213,7 +243,6 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
         let criterionId = ""
 
         if (customAward.type === "existing" && customAward.basedOnCriterion) {
-          // Award based on existing criterion
           criterionId = customAward.basedOnCriterion
 
           results.forEach((result) => {
@@ -228,7 +257,6 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
             }
           })
         } else if (customAward.type === "new") {
-          // Award based on new criterion
           criterionId = `special_${customAward.id}`
 
           results.forEach((result) => {
@@ -246,12 +274,12 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
 
         awards.push({
           awardName: customAward.name,
-          criterionId: criterionId,
+          criterionId,
           criterionName:
             customAward.type === "existing"
               ? eventCriteria.find((c) => c.id === customAward.basedOnCriterion)?.name || customAward.basedOnCriterion
               : customAward.criterionName,
-          winner: winner,
+          winner,
           description: customAward.description,
           icon: getIconComponent(customAward.icon),
         })
@@ -259,12 +287,9 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
 
       // Fallback to default Mazurka awards if no custom awards exist
       if (customSpecialAwards.length === 0) {
-        // Find choreography criterion (by name matching)
         const choreographyCriterion = eventCriteria.find(
           (c) => c.name.toLowerCase().includes("choreography") || c.id.toLowerCase().includes("choreography"),
         )
-
-        // Find costume criterion (by name matching)
         const costumeCriterion = eventCriteria.find(
           (c) =>
             c.name.toLowerCase().includes("costume") ||
@@ -272,7 +297,6 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
             c.id.toLowerCase().includes("costume"),
         )
 
-        // Best in Choreography Award
         if (choreographyCriterion) {
           let bestChoreographyWinner = null
           let highestChoreographyScore = 0
@@ -299,7 +323,6 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
           })
         }
 
-        // Best in Costume and Props Award
         if (costumeCriterion) {
           let bestCostumeWinner = null
           let highestCostumeScore = 0
@@ -337,7 +360,7 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
     if (isOpen) {
       loadResults()
     }
-  }, [isOpen, eventId])
+  }, [isOpen, loadResults])
 
   const getRankBadge = (rank: number) => {
     switch (rank) {
@@ -396,19 +419,6 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
   const isMazurkaEvent = eventTitle.toUpperCase().includes("MAZURKA")
   const hasSpecialAwards = specialAwards.length > 0
 
-  const getIconComponent = (iconName: string): React.ReactNode => {
-    switch (iconName) {
-      case "Star":
-        return <Star className="h-5 w-5 text-purple-500" />
-      case "Crown":
-        return <Crown className="h-5 w-5 text-amber-500" />
-      case "Award":
-        return <Award className="h-5 w-5 text-blue-500" />
-      default:
-        return <Award className="h-5 w-5 text-blue-500" /> // Default icon
-    }
-  }
-
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -423,7 +433,9 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
             <Trophy className="h-5 w-5 text-yellow-500" />
             Event Results: {eventTitle}
           </DialogTitle>
-          <DialogDescription>View judging scores, rankings, and special awards for this event</DialogDescription>
+          <DialogDescription>
+            View judging scores, rankings, and special awards for this event
+          </DialogDescription>
         </DialogHeader>
 
         {loading ? (
@@ -528,7 +540,7 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-4">
-                          <p className="text-gray-700 italic">"{award.description}"</p>
+                          <p className="text-gray-700 italic">&quot;{award.description}&quot;</p>
 
                           <div className="bg-white rounded-lg p-4 border border-purple-200">
                             <div className="flex items-center justify-between">
@@ -564,7 +576,6 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
                   ))}
                 </div>
 
-                {/* Award Ceremony Note */}
                 <Card className="border-blue-200 bg-blue-50">
                   <CardContent className="pt-4">
                     <div className="text-center">
@@ -599,7 +610,10 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
                             <div>
                               <span className="font-medium text-gray-900">Judge: {score.judgeEmail}</span>
                               <p className="text-sm text-gray-500">
-                                Submitted: {score.submittedAt?.toDate?.()?.toLocaleString() || "Unknown"}
+                                Submitted:{" "}
+                                {score.submittedAt
+                                  ? score.submittedAt.toLocaleString()
+                                  : "Unknown"}
                               </p>
                             </div>
                             <div className="text-right">

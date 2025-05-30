@@ -8,24 +8,25 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Clock, Eye, Calendar, AlertCircle, Gavel, LogOut, RefreshCw, MapPin, UserCheck, Timer } from "lucide-react"
+import {
+  Clock,
+  Calendar,
+  AlertCircle,
+  Gavel,
+  LogOut,
+  RefreshCw,
+  MapPin,
+  UserCheck,
+  Timer,
+  Circle,
+  Play,
+  Star,
+  Award,
+  Users,
+} from "lucide-react"
 import { useRouter } from "next/navigation"
 
-interface ActiveEvent {
-  id: string
-  title: string
-  description: string
-  category: string
-  participants: any[]
-  maxParticipants?: number
-  duration?: string
-  venue?: string
-  requirements?: string
-  startTime: any
-  adminActivated: boolean
-  showToJudges: boolean
-  createdAt: any
-}
+import type { ActiveEvent } from "@/types"
 
 export default function JudgeDashboard() {
   const { user, signOut } = useAuth()
@@ -118,285 +119,293 @@ export default function JudgeDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-50 to-amber-50 flex items-center justify-center">
+        <div className="text-center space-y-6">
+          <div className="relative">
+            <div className="w-16 h-16 border-4 border-amber-200 border-t-amber-800 rounded-full animate-spin mx-auto"></div>
+            <Gavel className="h-6 w-6 text-amber-800 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-stone-900">Loading Dashboard</h3>
+            <p className="text-stone-600 text-sm">Preparing your judging environment...</p>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-3 text-gray-900">
-              <Gavel className="h-8 w-8 text-gray-600" />
-              KULTOURA Judge Dashboard
-            </h1>
-            <p className="text-gray-600 mt-1">Welcome back, {user?.email}</p>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              onClick={handleRefresh}
-              variant="outline"
-              disabled={refreshing}
-              className="border-gray-300 text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-            >
-              <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
-              {refreshing ? "Refreshing..." : "Refresh"}
-            </Button>
-            <Button
-              onClick={handleSignOut}
-              variant="outline"
-              className="border-gray-300 text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-            >
-              <LogOut className="h-4 w-4" />
-              Sign Out
-            </Button>
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-50 to-amber-50">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute top-20 left-20 w-32 h-32 border border-amber-300 rounded-full"></div>
+        <div className="absolute top-40 right-32 w-24 h-24 border border-stone-300 rounded-full"></div>
+        <div className="absolute bottom-32 left-1/3 w-20 h-20 border border-amber-300 rounded-full"></div>
+        <div className="absolute bottom-20 right-20 w-28 h-28 border border-stone-300 rounded-full"></div>
+      </div>
+
+      <div className="relative max-w-5xl mx-auto p-6 space-y-8">
+        {/* Enhanced Header */}
+        <div className="bg-white/80 backdrop-blur-sm border border-stone-200 rounded-2xl p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-gradient-to-br from-amber-100 to-amber-200 rounded-xl">
+                <Gavel className="h-8 w-8 text-amber-800" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-stone-900">KULTOURA</h1>
+                <p className="text-amber-800 font-medium">Judge Dashboard</p>
+                <p className="text-stone-600 text-sm">{user?.email}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:flex items-center gap-2 px-3 py-2 bg-amber-50 rounded-lg border border-amber-100">
+                <Star className="h-4 w-4 text-amber-600" />
+                <span className="text-sm font-medium text-amber-800">Judge</span>
+              </div>
+              <Button
+                onClick={handleRefresh}
+                variant="ghost"
+                size="sm"
+                disabled={refreshing}
+                className="text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-xl"
+              >
+                <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+              </Button>
+              <Button
+                onClick={handleSignOut}
+                variant="ghost"
+                size="sm"
+                className="text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-xl"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
 
         {/* Error Alert */}
         {error && (
-          <Alert className="border-red-200 bg-red-50">
-            <AlertCircle className="h-4 w-4" />
+          <Alert className="border-red-200 bg-red-50/80 backdrop-blur-sm rounded-xl">
+            <AlertCircle className="h-4 w-4 text-red-600" />
             <AlertDescription className="text-red-700">{error}</AlertDescription>
           </Alert>
         )}
 
-        {/* Current Active Event or Waiting State */}
-        {currentEvent ? (
-          <Card className="border-gray-200 bg-white">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-gray-900">
-                <Eye className="h-5 w-5 text-green-500" />
-                Active Event
-              </CardTitle>
-              <CardDescription className="text-gray-600">Event is live and ready for judging</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">{currentEvent.title}</h3>
-                <p className="text-gray-700">{currentEvent.description}</p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div className="space-y-1">
-                  <span className="font-medium text-gray-900">Category:</span>
-                  <div className="flex items-center gap-2">
-                    <p className="text-gray-700">{currentEvent.category}</p>
-                    {currentEvent.category.toLowerCase() === "cultural fashion walk" && (
-                      <Badge className="bg-purple-100 text-purple-800 border-purple-300 text-xs">
-                        Free-Roam Judging
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Primary Event Section */}
+          <div className="lg:col-span-2 space-y-6">
+            {currentEvent ? (
+              <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-xl rounded-2xl overflow-hidden">
+                {/* Live Header with Enhanced Design */}
+                <div className="bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800 px-6 py-4 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse"></div>
+                  <div className="flex items-center justify-between relative z-10">
+                    <div className="flex items-center gap-4">
+                      <Badge className="bg-red-600 text-white px-4 py-2 text-sm font-bold tracking-wide shadow-lg rounded-full">
+                        🔴 LIVE
                       </Badge>
-                    )}
+                      <div className="flex items-center gap-2 text-amber-100">
+                        <Users className="h-4 w-4" />
+                        <span className="text-sm font-medium">Active Event</span>
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <Circle className="h-3 w-3 text-red-400 fill-red-400 animate-pulse" />
+                      <Circle className="h-6 w-6 text-red-400/30 absolute -top-1.5 -left-1.5 animate-ping" />
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <span className="font-medium text-gray-900">Participants:</span>
-                  <p className="text-gray-700">{currentEvent.participants?.length || 0} registered</p>
-                </div>
-                {currentEvent.venue && (
-                  <div className="space-y-1">
-                    <span className="font-medium text-gray-900">Venue:</span>
-                    <p className="text-gray-700">{currentEvent.venue}</p>
-                  </div>
-                )}
-                {currentEvent.duration && (
-                  <div className="space-y-1">
-                    <span className="font-medium text-gray-900">Duration:</span>
-                    <p className="text-gray-700">{currentEvent.duration}</p>
-                  </div>
-                )}
-                <div className="space-y-1">
-                  <span className="font-medium text-gray-900">Started:</span>
-                  <p className="text-gray-700">{currentEvent.startTime?.toDate?.()?.toLocaleString() || "Just now"}</p>
-                </div>
-                <div className="space-y-1">
-                  <span className="font-medium text-gray-900">Status:</span>
-                  <Badge className="bg-green-100 text-green-800 border-green-300">Live for Judging</Badge>
-                </div>
-              </div>
 
-              {currentEvent.requirements && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="font-medium text-blue-800 mb-2">Event Requirements:</h4>
-                  <p className="text-blue-700 text-sm">{currentEvent.requirements}</p>
-                </div>
-              )}
-
-              <div className="pt-4 border-t border-gray-200">
-              <Button
-                onClick={() => {
-                  const category = currentEvent.category?.trim().toLowerCase() || ""
-                  if (category.includes("fashion")) {
-                    console.log("Routing to cultural fashion walk judging page")
-                    router.push(`/judge/cultural-fashion-walk/${currentEvent.id}`)
-                  } else {
-                    console.log("Routing to default judging page")
-                    router.push(`/judge/${currentEvent.id}`)
-                  }
-                }}
-                className="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium py-3"
-                size="lg"
-              >
-                Start Judging Event
-              </Button>
-
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="border-gray-200 bg-white">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-gray-900">
-                <Clock className="h-5 w-5 text-yellow-500" />
-                Waiting for Events
-              </CardTitle>
-              <CardDescription className="text-gray-600">
-                {allActiveEvents.length > 0
-                  ? "Events are available but not currently active for judging"
-                  : "No active events available for judging"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {allActiveEvents.length > 0 ? (
-                <div className="space-y-4">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
-                    <AlertCircle className="h-8 w-8 text-blue-500 mx-auto mb-3" />
-                    <h3 className="font-medium text-blue-800 mb-2">Events Available</h3>
-                    <p className="text-blue-700 text-sm mb-4">
-                      There are {allActiveEvents.length} event(s) created by the admin. Please wait for the admin to
-                      activate an event for judging.
-                    </p>
+                <CardContent className="p-8 space-y-8">
+                  {/* Event Details */}
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-4">
+                      <div className="p-2 bg-amber-100 rounded-lg">
+                        <Award className="h-6 w-6 text-amber-700" />
+                      </div>
+                      <div className="flex-1">
+                        <h2 className="text-2xl font-bold text-stone-900 mb-2">{currentEvent.title}</h2>
+                        <p className="text-stone-600 leading-relaxed">{currentEvent.description}</p>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="space-y-3">
-                    <h4 className="font-medium text-gray-900">Available Events:</h4>
-                    {allActiveEvents.map((event) => (
-                      <Card key={event.id} className="border-gray-200 bg-gray-50">
-                        <CardContent className="pt-4">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <h5 className="font-semibold text-gray-900">{event.title}</h5>
-                              <p className="text-gray-600 text-sm mt-1">{event.description}</p>
+                  {/* Action Button */}
+                  <Button
+                    onClick={() => {
+                      const path = currentEvent.category.toLowerCase().includes("fashion")
+                        ? `/judge/cultural-fashion-walk/${currentEvent.id}`
+                        : `/judge/${currentEvent.id}`
+                      router.push(path)
+                    }}
+                    className="w-full bg-gradient-to-r from-amber-700 via-amber-800 to-amber-900 hover:from-amber-800 hover:via-amber-900 hover:to-amber-950 text-white font-semibold py-6 px-8 rounded-xl shadow-lg transform hover:-translate-y-1 hover:shadow-xl transition-all duration-200 group text-lg"
+                    size="lg"
+                  >
+                    <Play className="h-6 w-6 mr-3 group-hover:scale-110 transition-transform" />
+                    Start Judging Session
+                  </Button>
 
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-3 text-xs text-gray-600">
-                                <div className="flex items-center gap-1">
-                                  <Calendar className="h-3 w-3" />
-                                  <span>{event.category}</span>
+                  {/* Status Indicator */}
+                  <div className="flex items-center justify-center gap-3 text-stone-600">
+                    <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-sm font-medium">Ready to begin evaluation</span>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-xl rounded-2xl">
+                <CardHeader className="pb-6">
+                  <CardTitle className="flex items-center gap-3 text-stone-900 text-xl">
+                    <div className="p-2 bg-amber-100 rounded-lg">
+                      <Clock className="h-6 w-6 text-amber-700" />
+                    </div>
+                    Waiting for Events
+                  </CardTitle>
+                  <CardDescription className="text-stone-600 ml-14">
+                    {allActiveEvents.length > 0
+                      ? "Events are available but not currently active for judging"
+                      : "No active events available for judging"}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {allActiveEvents.length > 0 ? (
+                    <div className="space-y-6">
+                      <div className="bg-gradient-to-r from-amber-50 to-amber-100 border border-amber-200 rounded-xl p-6 text-center">
+                        <AlertCircle className="h-8 w-8 text-amber-700 mx-auto mb-3" />
+                        <h3 className="font-semibold text-amber-900 mb-2">Events Available</h3>
+                        <p className="text-amber-800">{allActiveEvents.length} event(s) waiting for admin activation</p>
+                      </div>
+
+                      <div className="space-y-4">
+                        {allActiveEvents.map((event) => (
+                          <Card key={event.id} className="border-stone-200 bg-stone-50/50 rounded-xl">
+                            <CardContent className="p-6">
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1 space-y-3">
+                                  <h5 className="font-semibold text-stone-900">{event.title}</h5>
+                                  <p className="text-stone-600 text-sm">{event.description}</p>
+
+                                  <div className="flex flex-wrap gap-4 text-xs text-stone-500">
+                                    <div className="flex items-center gap-1">
+                                      <Calendar className="h-3 w-3" />
+                                      <span>{event.category}</span>
+                                    </div>
+                                    {event.venue && (
+                                      <div className="flex items-center gap-1">
+                                        <MapPin className="h-3 w-3" />
+                                        <span>{event.venue}</span>
+                                      </div>
+                                    )}
+                                    {event.duration && (
+                                      <div className="flex items-center gap-1">
+                                        <Timer className="h-3 w-3" />
+                                        <span>{event.duration}</span>
+                                      </div>
+                                    )}
+                                    {event.maxParticipants && (
+                                      <div className="flex items-center gap-1">
+                                        <UserCheck className="h-3 w-3" />
+                                        <span>Max: {event.maxParticipants}</span>
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                                {event.venue && (
-                                  <div className="flex items-center gap-1">
-                                    <MapPin className="h-3 w-3" />
-                                    <span>{event.venue}</span>
-                                  </div>
-                                )}
-                                {event.duration && (
-                                  <div className="flex items-center gap-1">
-                                    <Timer className="h-3 w-3" />
-                                    <span>{event.duration}</span>
-                                  </div>
-                                )}
-                                {event.maxParticipants && (
-                                  <div className="flex items-center gap-1">
-                                    <UserCheck className="h-3 w-3" />
-                                    <span>Max: {event.maxParticipants}</span>
-                                  </div>
-                                )}
+                                <Badge className="bg-amber-100 text-amber-800 border-amber-200 rounded-full px-3 py-1">
+                                  Waiting
+                                </Badge>
                               </div>
-                            </div>
-                            <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300 ml-4">Waiting</Badge>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-gradient-to-br from-stone-100 to-stone-200 rounded-xl p-8 text-center">
+                      <AlertCircle className="h-12 w-12 text-stone-500 mx-auto mb-4" />
+                      <h3 className="font-semibold text-stone-900 mb-2">No Active Events</h3>
+                      <p className="text-stone-600">
+                        Please wait for an administrator to create and activate an event for judging.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Instructions */}
+            <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-lg rounded-2xl">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-3 text-stone-900">
+                  <div className="p-2 bg-amber-100 rounded-lg">
+                    <Calendar className="h-5 w-5 text-amber-700" />
                   </div>
+                  How It Works
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4 text-sm">
+                  {[
+                    "Admin creates cultural events",
+                    "Events are activated for judging",
+                    "Evaluate participants based on criteria",
+                    "Submit scores and feedback",
+                  ].map((step, index) => (
+                    <div key={index} className="flex gap-3">
+                      <span className="flex-shrink-0 w-7 h-7 bg-gradient-to-br from-amber-100 to-amber-200 text-amber-800 rounded-full flex items-center justify-center text-xs font-bold">
+                        {index + 1}
+                      </span>
+                      <span className="text-stone-700 leading-relaxed">{step}</span>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-                  <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
-                  <h3 className="font-medium text-yellow-800 mb-2">No Active Events</h3>
-                  <p className="text-yellow-700 text-sm">
-                    Please wait for an administrator to create and activate an event for judging. You will be notified
-                    when an event becomes available.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
+              </CardContent>
+            </Card>
 
-        {/* Instructions */}
-        <Card className="border-gray-200 bg-white">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-gray-900">
-              <Calendar className="h-5 w-5 text-gray-600" />
-              How Judging Works
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
-              <div className="space-y-3">
-                <div className="flex items-start gap-2">
-                  <span className="font-medium text-gray-900 min-w-[20px]">1.</span>
-                  <span>Admin creates and prepares cultural events</span>
+            {/* Judge Information */}
+            <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-lg rounded-2xl">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-3 text-stone-900">
+                  <div className="p-2 bg-amber-100 rounded-lg">
+                    <Star className="h-5 w-5 text-amber-700" />
+                  </div>
+                  Judge Profile
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4 text-sm">
+                  {[
+                    { label: "Email", value: user?.email },
+                    { label: "Judge ID", value: `${user?.uid.slice(0, 8)}...`, mono: true },
+                    {
+                      label: "Last Login",
+                      value: user?.metadata?.lastSignInTime
+                        ? new Date(user.metadata.lastSignInTime).toLocaleDateString()
+                        : "Unknown",
+                    },
+                    {
+                      label: "Account Created",
+                      value: user?.metadata?.creationTime
+                        ? new Date(user.metadata.creationTime).toLocaleDateString()
+                        : "Unknown",
+                    },
+                  ].map((item, index) => (
+                    <div key={index} className="flex justify-between py-2 border-b border-stone-100 last:border-b-0">
+                      <span className="text-stone-600">{item.label}</span>
+                      <span className={`font-medium text-stone-900 ${item.mono ? "font-mono text-xs" : ""}`}>
+                        {item.value}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-start gap-2">
-                  <span className="font-medium text-gray-900 min-w-[20px]">2.</span>
-                  <span>Events are activated and made visible to judges</span>
-                </div>
-              </div>
-              <div className="space-y-3">
-                <div className="flex items-start gap-2">
-                  <span className="font-medium text-gray-900 min-w-[20px]">3.</span>
-                  <span>You evaluate participants based on criteria</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="font-medium text-gray-900 min-w-[20px]">4.</span>
-                  <span>Submit scores and feedback for each participant</span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Judge Information */}
-        <Card className="border-gray-200 bg-white">
-          <CardHeader>
-            <CardTitle className="text-gray-900">Judge Information</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4 text-sm">
-              <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="text-gray-700">Email:</span>
-                <span className="font-medium text-gray-900">{user?.email}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="text-gray-700">Judge ID:</span>
-                <span className="font-mono text-xs text-gray-600">{user?.uid.slice(0, 8)}...</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-gray-100">
-                <span className="text-gray-700">Last Login:</span>
-                <span className="font-medium text-gray-900">
-                  {user?.metadata?.lastSignInTime
-                    ? new Date(user.metadata.lastSignInTime).toLocaleDateString()
-                    : "Unknown"}
-                </span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="text-gray-700">Account Created:</span>
-                <span className="font-medium text-gray-900">
-                  {user?.metadata?.creationTime ? new Date(user.metadata.creationTime).toLocaleDateString() : "Unknown"}
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   )

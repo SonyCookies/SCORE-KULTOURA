@@ -1,3 +1,6 @@
+// types/index.ts
+
+
 import type { Timestamp } from "firebase/firestore"
 
 // Participant interface
@@ -6,6 +9,17 @@ export interface Participant {
   name: string
   status: "waiting" | "performing" | "completed"
   addedAt: Date | Timestamp
+}
+
+export interface ParticipantScore {
+  participantId: string
+  participantName: string
+  scores: Record<string, number>
+  feedback: string
+  totalScore: number
+  submitted: boolean
+  scoreDocId?: string
+  submittedAt?: Timestamp 
 }
 
 // Event interface
@@ -26,6 +40,22 @@ export interface Event {
   currentPerformer?: string | null
   // Add judging mode to distinguish between different types of events
   judgingMode: "sequential" | "free-roam" // sequential = normal mode, free-roam = cultural fashion walk
+}
+
+export interface ActiveEvent {
+  id: string
+  title: string
+  description: string
+  category: string
+  participants: Participant[]         // use your Participant type
+  maxParticipants?: number
+  duration?: string
+  venue?: string
+  requirements?: string
+  startTime: Timestamp | null        // Firestore Timestamp (or null)
+  adminActivated: boolean
+  showToJudges: boolean
+  createdAt: Timestamp                // Firestore Timestamp
 }
 
 // Criterion interface

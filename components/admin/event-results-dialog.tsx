@@ -158,7 +158,7 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
             icon: getIconComponent(customAward.icon),
           })
         }
-      } catch (error) {
+      } catch {
         // Optional: handle errors silently or set error state
       }
 

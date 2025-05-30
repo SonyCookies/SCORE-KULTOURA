@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Users, Plus, Play, Pause, CheckCircle, Clock, Loader2, Trash2 } from "lucide-react"
+import { Users, Plus, Play, Pause, Clock, Loader2, Trash2 } from "lucide-react"
 import type { Event, Participant } from "@/types"
 
 interface ParticipantManagementProps {

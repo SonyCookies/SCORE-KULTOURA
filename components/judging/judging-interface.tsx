@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { collection, addDoc, doc, onSnapshot, query, where, getDocs, updateDoc, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
@@ -11,19 +11,21 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Slider } from "@/components/ui/slider"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ArrowLeft, Gavel, Star, CheckCircle, AlertCircle, Loader2, Play, Clock, Edit, Save, Award } from "lucide-react"
-import type { Event, Criteria, Participant, Criterion, SpecialAward } from "@/types"
-
-interface ParticipantScore {
-  participantId: string
-  participantName: string
-  scores: Record<string, number>
-  feedback: string
-  totalScore: number
-  submitted: boolean
-  scoreDocId?: string // For updating existing scores
-  submittedAt?: any
-}
+import {
+  ArrowLeft,
+  Gavel,
+  Star,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  Play,
+  Clock,
+  Edit,
+  Save,
+  Award,
+  Users,
+} from "lucide-react"
+import type { Event, Criteria, Participant, ParticipantScore, Criterion, SpecialAward } from "@/types"
 
 interface JudgingInterfaceProps {
   event: Event | null
@@ -68,15 +70,28 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
     return () => unsubscribe()
   }, [initialEvent])
 
-  useEffect(() => {
-    if (event && currentPerformer) {
-      loadExistingScores()
-      loadSpecialAwardCriteria()
-    }
-    setLoading(false)
-  }, [event, currentPerformer, criteria, user])
+  const initializeNewScoring = useCallback(() => {
+    if (!currentPerformer || !criteria) return
 
-  const loadExistingScores = async () => {
+    const participantScores: Record<string, number> = {}
+    criteria.criteria.forEach((criterion) => {
+      participantScores[criterion.id] = 0
+    })
+
+    setScores((prev) => ({
+      ...prev,
+      [currentPerformer.id]: {
+        participantId: currentPerformer.id,
+        participantName: currentPerformer.name,
+        scores: participantScores,
+        feedback: "",
+        totalScore: 0,
+        submitted: false,
+      },
+    }))
+  }, [currentPerformer, criteria])
+
+  const loadExistingScores = useCallback(async () => {
     if (!currentPerformer || !criteria || !user || !event) return
 
     setLoadingScores(true)
@@ -159,28 +174,7 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
     } finally {
       setLoadingScores(false)
     }
-  }
-
-  const initializeNewScoring = () => {
-    if (!currentPerformer || !criteria) return
-
-    const participantScores: Record<string, number> = {}
-    criteria.criteria.forEach((criterion) => {
-      participantScores[criterion.id] = 0
-    })
-
-    setScores((prev) => ({
-      ...prev,
-      [currentPerformer.id]: {
-        participantId: currentPerformer.id,
-        participantName: currentPerformer.name,
-        scores: participantScores,
-        feedback: "",
-        totalScore: 0,
-        submitted: false,
-      },
-    }))
-  }
+  }, [currentPerformer, criteria, user, event, initializeNewScoring])
 
   const updateScore = (participantId: string, criterionId: string, score: number) => {
     setScores((prev) => {
@@ -284,7 +278,7 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
   const canSubmit = currentScore && Object.values(currentScore.scores).every((s) => s > 0) && !currentScore.submitted
   const hasExistingScore = Boolean(currentScore?.scoreDocId && currentScore?.submitted && !isEditing)
 
-  const loadSpecialAwardCriteria = async () => {
+  const loadSpecialAwardCriteria = useCallback(async () => {
     if (!event) return
 
     try {
@@ -309,15 +303,23 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
     } catch (error) {
       console.error("Error loading special award criteria:", error)
     }
-  }
+  }, [event])
+
+  useEffect(() => {
+    if (event && currentPerformer) {
+      loadExistingScores()
+      loadSpecialAwardCriteria()
+    }
+    setLoading(false)
+  }, [event, currentPerformer, loadExistingScores, loadSpecialAwardCriteria])
 
   if (!event) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-50 to-amber-50 flex items-center justify-center">
+        <div className="text-center bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-stone-200">
+          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-red-600 mb-4">Event Not Found</h1>
-          <Button onClick={() => router.push("/")} variant="outline">
+          <Button onClick={() => router.push("/")} variant="outline" className="rounded-xl">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Button>
@@ -328,10 +330,16 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading judging interface...</p>
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-50 to-amber-50 flex items-center justify-center">
+        <div className="text-center space-y-6">
+          <div className="relative">
+            <div className="w-16 h-16 border-4 border-amber-200 border-t-amber-800 rounded-full animate-spin mx-auto"></div>
+            <Gavel className="h-6 w-6 text-amber-800 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-lg font-semibold text-stone-900">Loading Judging Interface</h3>
+            <p className="text-stone-600 text-sm">Preparing your scoring environment...</p>
+          </div>
         </div>
       </div>
     )
@@ -339,12 +347,12 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
 
   if (!criteria || !criteria.criteria.length) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-50 to-amber-50 flex items-center justify-center">
+        <div className="text-center bg-white/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-stone-200">
+          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-red-600 mb-4">No Judging Criteria</h1>
-          <p className="text-gray-600 mb-4">This event does not have judging criteria set up.</p>
-          <Button onClick={() => router.push("/")} variant="outline">
+          <p className="text-stone-600 mb-6">This event does not have judging criteria set up.</p>
+          <Button onClick={() => router.push("/")} variant="outline" className="rounded-xl">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Dashboard
           </Button>
@@ -355,39 +363,57 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
 
   if (!currentPerformer) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-4xl mx-auto p-6 space-y-6">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <Button onClick={() => router.push("/")} variant="outline" className="mb-4">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dashboard
-              </Button>
-              <h1 className="text-3xl font-bold flex items-center gap-3 text-gray-900">
-                <Gavel className="h-8 w-8 text-gray-600" />
-                Judging: {event.title}
-              </h1>
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-50 to-amber-50">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute top-20 left-20 w-32 h-32 border border-amber-300 rounded-full"></div>
+          <div className="absolute top-40 right-32 w-24 h-24 border border-stone-300 rounded-full"></div>
+          <div className="absolute bottom-32 left-1/3 w-20 h-20 border border-amber-300 rounded-full"></div>
+          <div className="absolute bottom-20 right-20 w-28 h-28 border border-stone-300 rounded-full"></div>
+        </div>
+
+        <div className="relative max-w-5xl mx-auto p-6 space-y-8">
+          {/* Enhanced Header */}
+          <div className="bg-white/80 backdrop-blur-sm border border-stone-200 rounded-2xl p-6 shadow-lg">
+            <Button
+              onClick={() => router.push("/")}
+              variant="ghost"
+              className="mb-4 text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-xl"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Button>
+
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-gradient-to-br from-amber-100 to-amber-200 rounded-xl">
+                <Gavel className="h-8 w-8 text-amber-800" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-stone-900">Judging: {event.title}</h1>
+                <p className="text-stone-600">Real-time event scoring</p>
+              </div>
             </div>
           </div>
 
           {/* Waiting for Performer */}
-          <Card className="border-yellow-200 bg-yellow-50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-yellow-800">
-                <Clock className="h-5 w-5" />
+          <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-xl rounded-2xl overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-amber-100 to-amber-200 border-b border-amber-200">
+              <CardTitle className="flex items-center gap-3 text-amber-800">
+                <div className="p-2 bg-amber-200 rounded-lg">
+                  <Clock className="h-6 w-6 text-amber-700" />
+                </div>
                 Waiting for Performance
               </CardTitle>
-              <CardDescription className="text-yellow-700">
+              <CardDescription className="text-amber-800">
                 No team is currently performing. Please wait for the admin to start a performance.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
+            <CardContent className="p-8">
+              <div className="space-y-6">
                 <div className="text-center py-8">
-                  <Clock className="h-16 w-16 text-yellow-500 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-yellow-800 mb-2">No Active Performance</h3>
-                  <p className="text-yellow-700">
+                  <Clock className="h-16 w-16 text-amber-500 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-stone-900 mb-2">No Active Performance</h3>
+                  <p className="text-stone-600">
                     The admin will select which team is performing. You can only score the currently performing team.
                   </p>
                 </div>
@@ -395,17 +421,25 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
                 {/* Show all participants and their status */}
                 {event.participants && event.participants.length > 0 && (
                   <div>
-                    <h4 className="font-medium text-yellow-800 mb-3">Event Participants:</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <h4 className="font-semibold text-stone-900 mb-4 flex items-center gap-2">
+                      <Users className="h-5 w-5 text-amber-700" />
+                      Event Participants:
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                       {event.participants.map((participant) => (
                         <div
                           key={participant.id}
-                          className="flex items-center gap-2 p-2 bg-white border border-yellow-200 rounded"
+                          className="flex items-center gap-3 p-4 bg-stone-50 border border-stone-200 rounded-xl"
                         >
-                          {participant.status === "performing" && <Play className="h-3 w-3 text-green-500" />}
-                          {participant.status === "completed" && <CheckCircle className="h-3 w-3 text-blue-500" />}
-                          {participant.status === "waiting" && <Clock className="h-3 w-3 text-yellow-500" />}
-                          <span className="text-sm font-medium">{participant.name}</span>
+                          <div className="p-2 bg-stone-100 rounded-lg">
+                            {participant.status === "performing" && <Play className="h-4 w-4 text-green-600" />}
+                            {participant.status === "completed" && <CheckCircle className="h-4 w-4 text-blue-600" />}
+                            {participant.status === "waiting" && <Clock className="h-4 w-4 text-amber-600" />}
+                          </div>
+                          <div className="flex-1">
+                            <span className="font-medium text-stone-900">{participant.name}</span>
+                            <div className="text-xs text-stone-500 capitalize">{participant.status || "waiting"}</div>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -420,10 +454,18 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-stone-50 to-amber-50">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute top-20 left-20 w-32 h-32 border border-amber-300 rounded-full"></div>
+        <div className="absolute top-40 right-32 w-24 h-24 border border-stone-300 rounded-full"></div>
+        <div className="absolute bottom-32 left-1/3 w-20 h-20 border border-amber-300 rounded-full"></div>
+        <div className="absolute bottom-20 right-20 w-28 h-28 border border-stone-300 rounded-full"></div>
+      </div>
+
       {/* Success Dialog */}
       <Dialog open={showSubmitDialog} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-green-600">
               <CheckCircle className="h-5 w-5" />
@@ -435,34 +477,41 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-center pt-4">
-            <Button onClick={() => router.push("/")} className="bg-green-600 hover:bg-green-700">
+            <Button onClick={() => router.push("/")} className="bg-green-600 hover:bg-green-700 rounded-xl">
               Return to Dashboard
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <Button onClick={() => router.push("/")} variant="outline" className="mb-4">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Button>
-            <h1 className="text-3xl font-bold flex items-center gap-3 text-gray-900">
-              <Gavel className="h-8 w-8 text-gray-600" />
-              Judging: {event.title}
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Currently scoring: <strong>{currentPerformer.name}</strong>
-            </p>
+      <div className="relative max-w-5xl mx-auto p-6 space-y-8">
+        {/* Enhanced Header */}
+        <div className="bg-white/80 backdrop-blur-sm border border-stone-200 rounded-2xl p-6 shadow-lg">
+          <Button
+            onClick={() => router.push("/")}
+            variant="ghost"
+            className="mb-4 text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-xl"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Dashboard
+          </Button>
+
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-amber-100 to-amber-200 rounded-xl">
+              <Gavel className="h-8 w-8 text-amber-800" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-stone-900">Judging: {event.title}</h1>
+              <p className="text-stone-600">
+                Currently scoring: <span className="font-semibold text-amber-800">{currentPerformer.name}</span>
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Error Alert */}
         {error && (
-          <Alert className="border-red-200 bg-red-50">
+          <Alert className="border-red-200 bg-red-50/80 backdrop-blur-sm rounded-xl">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription className="text-red-700">{error}</AlertDescription>
           </Alert>
@@ -470,38 +519,42 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
 
         {/* Loading Scores Alert */}
         {loadingScores && (
-          <Alert className="border-blue-200 bg-blue-50">
+          <Alert className="border-amber-200 bg-amber-50/80 backdrop-blur-sm rounded-xl">
             <Loader2 className="h-4 w-4 animate-spin" />
-            <AlertDescription className="text-blue-700">Loading your previous scores...</AlertDescription>
+            <AlertDescription className="text-amber-700">Loading your previous scores...</AlertDescription>
           </Alert>
         )}
 
         {/* Current Performer Card */}
-        <Card className="border-green-200 bg-green-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-green-800">
-              <Play className="h-5 w-5" />
-              Currently Performing
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-2xl font-bold text-green-900">{currentPerformer.name}</h3>
-                <p className="text-green-700">This team is currently performing and available for scoring</p>
-                {hasExistingScore && currentScore?.submittedAt && (
-                  <p className="text-green-600 text-sm mt-1">
-                    Previously scored on: {currentScore.submittedAt.toDate?.()?.toLocaleString() || "Unknown"}
-                  </p>
-                )}
+        <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-xl rounded-2xl overflow-hidden">
+          <CardHeader className="bg-gradient-to-r from-green-100 to-emerald-100 border-b border-green-200">
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-3 text-green-800 mt-6">
+                <div className="p-2 bg-green-200 rounded-lg">
+                  <Play className="h-6 w-6 text-green-700" />
+                </div>
+                <span>Currently Performing</span>
               </div>
               <div className="flex items-center gap-2">
-                <Badge className="bg-green-600 text-white text-lg px-4 py-2">LIVE</Badge>
+                <Badge className="bg-red-600 text-white text-sm px-3 py-1 rounded-full animate-pulse">🔴 LIVE</Badge>
                 {hasExistingScore && (
-                  <Badge className="bg-blue-100 text-blue-800 border-blue-300">
+                  <Badge className="bg-amber-100 text-amber-800 border-amber-300 rounded-full">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Previously Scored
                   </Badge>
+                )}
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-2xl font-bold text-stone-900">{currentPerformer.name}</h3>
+                <p className="text-stone-600">This team is currently performing and available for scoring</p>
+                {hasExistingScore && currentScore?.submittedAt && (
+                  <p className="text-stone-500 text-sm mt-1">
+                    Previously scored on: {currentScore.submittedAt.toDate?.()?.toLocaleString() || "Unknown"}
+                  </p>
                 )}
               </div>
             </div>
@@ -510,28 +563,30 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
 
         {/* Scoring Interface */}
         {currentScore && (
-          <Card className="border-gray-200 bg-white">
+          <Card className="border-0 bg-white/80 backdrop-blur-sm shadow-xl rounded-2xl">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Star className="h-5 w-5 text-yellow-500" />
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-amber-100 rounded-lg">
+                    <Star className="h-6 w-6 text-amber-700" />
+                  </div>
                   Scoring: {currentPerformer.name}
                 </div>
                 <div className="flex items-center gap-2">
                   {hasExistingScore && (
-                    <Button onClick={enableEditing} size="sm" variant="outline">
+                    <Button onClick={enableEditing} size="sm" variant="outline" className="rounded-xl">
                       <Edit className="h-3 w-3 mr-1" />
                       Edit Score
                     </Button>
                   )}
                   {currentScore.submitted && !isEditing && (
-                    <Badge className="bg-green-100 text-green-800 border-green-300">
+                    <Badge className="bg-green-100 text-green-800 border-green-300 rounded-full">
                       <CheckCircle className="h-3 w-3 mr-1" />
                       Submitted
                     </Badge>
                   )}
                   {isEditing && (
-                    <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                    <Badge className="bg-amber-100 text-amber-800 border-amber-300 rounded-full">
                       <Edit className="h-3 w-3 mr-1" />
                       Editing
                     </Badge>
@@ -539,25 +594,25 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
                 </div>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6 pb-24">
+            <CardContent className="space-y-8 pb-24">
               {/* Regular Scoring Criteria */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-gray-900">Main Judging Criteria</h3>
+              <div className="space-y-6">
+                <h3 className="font-semibold text-stone-900 text-lg">Main Judging Criteria</h3>
                 {criteria.criteria.map((criterion) => (
-                  <div key={criterion.id} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-3">
+                  <div key={criterion.id} className="border border-stone-200 rounded-xl p-6 bg-stone-50/50">
+                    <div className="flex justify-between items-start mb-4">
                       <div className="flex-1">
-                        <h4 className="font-medium text-gray-900">{criterion.name}</h4>
-                        <p className="text-gray-600 text-sm mt-1">{criterion.description}</p>
-                        <div className="text-xs text-gray-500 mt-1">Weight: {criterion.percentage}%</div>
+                        <h4 className="font-semibold text-stone-900 text-lg">{criterion.name}</h4>
+                        <p className="text-stone-600 mt-1">{criterion.description}</p>
+                        <div className="text-sm text-amber-700 mt-2 font-medium">Weight: {criterion.percentage}%</div>
                       </div>
-                      <div className="text-right ml-4">
-                        <div className="text-2xl font-bold text-gray-900">
+                      <div className="text-right ml-6">
+                        <div className="text-3xl font-bold text-amber-800">
                           {currentScore.scores[criterion.id] || 0}%
                         </div>
                       </div>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <Slider
                         value={[currentScore.scores[criterion.id] || 0]}
                         onValueChange={(value) => updateScore(currentPerformer.id, criterion.id, value[0])}
@@ -567,7 +622,7 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
                         className="w-full"
                         disabled={Boolean(hasExistingScore)}
                       />
-                      <div className="flex justify-between text-xs text-gray-500">
+                      <div className="flex justify-between text-sm text-stone-500">
                         <span>0%</span>
                         <span>100%</span>
                       </div>
@@ -578,33 +633,37 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
 
               {/* Special Award Criteria */}
               {specialAwardCriteria.length > 0 && (
-                <div className="space-y-4 mt-8">
-                  <div className="border-t border-gray-200 pt-6">
-                    <h3 className="font-semibold text-purple-900 flex items-center gap-2">
-                      <Award className="h-5 w-5 text-purple-500" />
+                <div className="space-y-6 mt-8">
+                  <div className="border-t border-stone-200 pt-8">
+                    <h3 className="font-semibold text-stone-900 text-lg flex items-center gap-3">
+                      <div className="p-2 bg-amber-100 rounded-lg">
+                        <Award className="h-6 w-6 text-amber-700" />
+                      </div>
                       Special Award Criteria
                     </h3>
-                    <p className="text-purple-700 text-sm mt-1">These scores are used for special awards only</p>
+                    <p className="text-stone-600 mt-2">These scores are used for special awards only</p>
                   </div>
 
                   {specialAwardCriteria.map((criterion) => (
-                    <div key={criterion.id} className="border border-purple-200 rounded-lg p-4 bg-purple-50">
-                      <div className="flex justify-between items-start mb-3">
+                    <div key={criterion.id} className="border border-amber-200 rounded-xl p-6 bg-amber-50/50">
+                      <div className="flex justify-between items-start mb-4">
                         <div className="flex-1">
-                          <h4 className="font-medium text-purple-900 flex items-center gap-2">
-                            <Award className="h-4 w-4" />
+                          <h4 className="font-semibold text-stone-900 text-lg flex items-center gap-2">
+                            <Award className="h-5 w-5 text-amber-700" />
                             {criterion.name}
                           </h4>
-                          <p className="text-purple-700 text-sm mt-1">{criterion.description}</p>
-                          <div className="text-xs text-purple-600 mt-1">Special Award: {criterion.awardName}</div>
+                          <p className="text-stone-600 mt-1">{criterion.description}</p>
+                          <div className="text-sm text-amber-700 mt-2 font-medium">
+                            Special Award: {criterion.awardName}
+                          </div>
                         </div>
-                        <div className="text-right ml-4">
-                          <div className="text-2xl font-bold text-purple-900">
+                        <div className="text-right ml-6">
+                          <div className="text-3xl font-bold text-amber-800">
                             {currentScore.scores[criterion.id] || 0}%
                           </div>
                         </div>
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <Slider
                           value={[currentScore.scores[criterion.id] || 0]}
                           onValueChange={(value) => updateScore(currentPerformer.id, criterion.id, value[0])}
@@ -614,7 +673,7 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
                           className="w-full"
                           disabled={Boolean(hasExistingScore)}
                         />
-                        <div className="flex justify-between text-xs text-purple-600">
+                        <div className="flex justify-between text-sm text-amber-600">
                           <span>0%</span>
                           <span>100%</span>
                         </div>
@@ -625,27 +684,32 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
               )}
 
               {/* Submit Button */}
-              <div className="pt-4 border-t border-gray-200">
+              <div className="pt-6 border-t border-stone-200">
                 {hasExistingScore ? (
-                  <div className="text-center">
-                    <p className="text-gray-600 mb-4">
-                      You have already scored this team. Click "Edit Score" above to make changes.
+                  <div className="text-center space-y-4">
+                    <p className="text-stone-600">
+                      You have already scored this team. Click &quot;Edit Score&quot; above to make changes.
                     </p>
-                    <Button onClick={() => router.push("/")} variant="outline" size="lg">
+                    <Button onClick={() => router.push("/")} variant="outline" size="lg" className="rounded-xl">
                       Return to Dashboard
                     </Button>
                   </div>
                 ) : (
                   <>
-                    <Button onClick={submitScore} disabled={!canSubmit || submitting} className="w-full" size="lg">
+                    <Button
+                      onClick={submitScore}
+                      disabled={!canSubmit || submitting}
+                      className="w-full bg-gradient-to-r from-amber-700 via-amber-800 to-amber-900 hover:from-amber-800 hover:via-amber-900 hover:to-amber-950 text-white font-semibold py-4 px-8 rounded-xl shadow-lg transform hover:-translate-y-1 hover:shadow-xl transition-all duration-200"
+                      size="lg"
+                    >
                       {submitting ? (
                         <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                           {currentScore.scoreDocId ? "Updating Score..." : "Submitting Score..."}
                         </>
                       ) : (
                         <>
-                          <Save className="h-4 w-4 mr-2" />
+                          <Save className="h-5 w-5 mr-2" />
                           {currentScore.scoreDocId
                             ? `Update Score for ${currentPerformer.name}`
                             : `Submit Score for ${currentPerformer.name}`}
@@ -653,7 +717,7 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
                       )}
                     </Button>
                     {!canSubmit && (
-                      <p className="text-red-600 text-sm mt-2 text-center">
+                      <p className="text-red-600 text-sm mt-3 text-center">
                         Please score all criteria before submitting.
                       </p>
                     )}
@@ -664,13 +728,14 @@ export default function JudgingInterface({ event: initialEvent, criteria }: Judg
           </Card>
         )}
       </div>
+
       {/* Floating Total Score */}
       {currentScore && (
         <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
-          <div className="bg-white border-2 border-gray-300 rounded-lg p-4 shadow-lg">
-            <div className="flex items-center justify-between min-w-[280px]">
-              <span className="font-semibold text-gray-900 text-lg">Total Score:</span>
-              <span className="text-3xl font-bold text-gray-900">{currentScore.totalScore.toFixed(1)}%</span>
+          <div className="bg-white/90 backdrop-blur-sm border border-stone-200 rounded-2xl p-6 shadow-xl">
+            <div className="flex items-center justify-between min-w-[320px]">
+              <span className="font-semibold text-stone-900 text-lg">Total Score:</span>
+              <span className="text-4xl font-bold text-amber-800">{currentScore.totalScore.toFixed(1)}%</span>
             </div>
           </div>
         </div>

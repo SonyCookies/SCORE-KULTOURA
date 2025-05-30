@@ -1,43 +1,30 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { collection, query, where, onSnapshot, Timestamp } from "firebase/firestore"
+import { collection, query, where, onSnapshot } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import {
-  Clock,
-  Eye,
-  Calendar,
-  AlertCircle,
-  Gavel,
-  LogOut,
-  RefreshCw,
-  MapPin,
-  UserCheck,
-  Timer,
-} from "lucide-react"
+import { Clock, Eye, Calendar, AlertCircle, Gavel, LogOut, RefreshCw, MapPin, UserCheck, Timer } from "lucide-react"
 import { useRouter } from "next/navigation"
-
-import type { Participant } from "@/types"
 
 interface ActiveEvent {
   id: string
   title: string
   description: string
   category: string
-  participants: Participant[]
+  participants: any[]
   maxParticipants?: number
   duration?: string
   venue?: string
   requirements?: string
-  startTime?: Timestamp | null
+  startTime: any
   adminActivated: boolean
   showToJudges: boolean
-  createdAt?: Timestamp | null
+  createdAt: any
 }
 
 export default function JudgeDashboard() {
@@ -51,7 +38,6 @@ export default function JudgeDashboard() {
 
   const loadDashboardData = async () => {
     if (!user) return
-    // Placeholder if you want to add manual reload logic
   }
 
   useEffect(() => {
@@ -71,29 +57,12 @@ export default function JudgeDashboard() {
           activeEventQuery,
           (snapshot) => {
             if (!snapshot.empty) {
-              const events = snapshot.docs.map((doc) => {
-                const data = doc.data()
-                return {
-                  id: doc.id,
-                  title: data.title,
-                  description: data.description,
-                  category: data.category,
-                  participants: (data.participants || []) as Participant[],
-                  maxParticipants: data.maxParticipants,
-                  duration: data.duration,
-                  venue: data.venue,
-                  requirements: data.requirements,
-                  startTime: data.startTime || null,
-                  adminActivated: data.adminActivated,
-                  showToJudges: data.showToJudges,
-                  createdAt: data.createdAt || null,
-                } as ActiveEvent
-              })
+              const events = snapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+              })) as ActiveEvent[]
 
-              const sortedEvents = events.sort(
-                (a, b) =>
-                  (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
-              )
+              const sortedEvents = events.sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds)
 
               setAllActiveEvents(sortedEvents)
               setCurrentEvent(sortedEvents[0] || null)
@@ -109,7 +78,7 @@ export default function JudgeDashboard() {
             setError("Failed to load events. Please refresh the page.")
             setLoading(false)
             setRefreshing(false)
-          }
+          },
         )
       } catch (error) {
         console.error("Error initializing dashboard:", error)
@@ -122,7 +91,9 @@ export default function JudgeDashboard() {
     initializeDashboard()
 
     return () => {
-      if (unsubscribe) unsubscribe()
+      if (unsubscribe) {
+        unsubscribe()
+      }
     }
   }, [user])
 
@@ -216,7 +187,14 @@ export default function JudgeDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div className="space-y-1">
                   <span className="font-medium text-gray-900">Category:</span>
-                  <p className="text-gray-700">{currentEvent.category}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-gray-700">{currentEvent.category}</p>
+                    {currentEvent.category.toLowerCase() === "cultural fashion walk" && (
+                      <Badge className="bg-purple-100 text-purple-800 border-purple-300 text-xs">
+                        Free-Roam Judging
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <span className="font-medium text-gray-900">Participants:</span>
@@ -236,11 +214,7 @@ export default function JudgeDashboard() {
                 )}
                 <div className="space-y-1">
                   <span className="font-medium text-gray-900">Started:</span>
-                  <p className="text-gray-700">
-                    {currentEvent.startTime?.toDate
-                      ? currentEvent.startTime.toDate().toLocaleString()
-                      : "Just now"}
-                  </p>
+                  <p className="text-gray-700">{currentEvent.startTime?.toDate?.()?.toLocaleString() || "Just now"}</p>
                 </div>
                 <div className="space-y-1">
                   <span className="font-medium text-gray-900">Status:</span>
@@ -256,13 +230,23 @@ export default function JudgeDashboard() {
               )}
 
               <div className="pt-4 border-t border-gray-200">
-                <Button
-                  onClick={() => router.push(`/judge/${currentEvent.id}`)}
-                  className="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium py-3"
-                  size="lg"
-                >
-                  Start Judging Event
-                </Button>
+              <Button
+                onClick={() => {
+                  const category = currentEvent.category?.trim().toLowerCase() || ""
+                  if (category.includes("fashion")) {
+                    console.log("Routing to cultural fashion walk judging page")
+                    router.push(`/judge/cultural-fashion-walk/${currentEvent.id}`)
+                  } else {
+                    console.log("Routing to default judging page")
+                    router.push(`/judge/${currentEvent.id}`)
+                  }
+                }}
+                className="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium py-3"
+                size="lg"
+              >
+                Start Judging Event
+              </Button>
+
               </div>
             </CardContent>
           </Card>
@@ -291,7 +275,6 @@ export default function JudgeDashboard() {
                     </p>
                   </div>
 
-                  {/* Show all active events */}
                   <div className="space-y-3">
                     <h4 className="font-medium text-gray-900">Available Events:</h4>
                     {allActiveEvents.map((event) => (
@@ -408,9 +391,7 @@ export default function JudgeDashboard() {
               <div className="flex justify-between py-2">
                 <span className="text-gray-700">Account Created:</span>
                 <span className="font-medium text-gray-900">
-                  {user?.metadata?.creationTime
-                    ? new Date(user.metadata.creationTime).toLocaleDateString()
-                    : "Unknown"}
+                  {user?.metadata?.creationTime ? new Date(user.metadata.creationTime).toLocaleDateString() : "Unknown"}
                 </span>
               </div>
             </div>

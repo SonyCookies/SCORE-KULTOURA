@@ -91,17 +91,13 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
     }
   }
 
+  // UPDATED: Allow re-selecting participants anytime by NOT marking them "completed"
   const setCurrentPerformerHandler = async (participantId: string | null) => {
     setLoading(true)
     try {
       const updatedParticipants = participants.map((p) => ({
         ...p,
-        status:
-          p.id === participantId
-            ? ("performing" as const)
-            : p.id === currentPerformer
-              ? ("completed" as const)
-              : p.status,
+        status: p.id === participantId ? ("performing" as const) : "waiting" as const,
       }))
 
       setParticipants(updatedParticipants)
@@ -146,8 +142,7 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
     switch (status) {
       case "performing":
         return <Play className="h-4 w-4 text-green-500" />
-      case "completed":
-        return <CheckCircle className="h-4 w-4 text-blue-500" />
+      // No completed status used anymore
       case "waiting":
       default:
         return <Clock className="h-4 w-4 text-yellow-500" />
@@ -158,8 +153,6 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
     switch (status) {
       case "performing":
         return <Badge className="bg-green-100 text-green-800 border-green-300">Performing</Badge>
-      case "completed":
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-300">Completed</Badge>
       case "waiting":
       default:
         return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">Waiting</Badge>
@@ -270,13 +263,11 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No one performing</SelectItem>
-                      {participants
-                        .filter((p) => p.status !== "completed")
-                        .map((participant) => (
-                          <SelectItem key={participant.id} value={participant.id}>
-                            {participant.name}
-                          </SelectItem>
-                        ))}
+                      {participants.map((participant) => (
+                        <SelectItem key={participant.id} value={participant.id}>
+                          {participant.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -303,9 +294,7 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
                     <div
                       key={participant.id}
                       className={`flex items-center justify-between p-3 rounded-lg border ${
-                        participant.id === currentPerformer
-                          ? "border-green-300 bg-green-50"
-                          : "border-gray-200 bg-white"
+                        participant.id === currentPerformer ? "border-green-300 bg-green-50" : "border-gray-200 bg-white"
                       }`}
                     >
                       <div className="flex items-center gap-3">
@@ -359,9 +348,7 @@ export default function ParticipantManagement({ event, onEventUpdated }: Partici
                     <div className="text-sm text-gray-600">Performing</div>
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-blue-600">
-                      {participants.filter((p) => p.status === "completed").length}
-                    </div>
+                    <div className="text-2xl font-bold text-blue-600">{0 /* No completed status anymore */}</div>
                     <div className="text-sm text-gray-600">Completed</div>
                   </div>
                 </div>

@@ -95,7 +95,7 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
       case "Award":
         return <Award className="h-5 w-5 text-blue-500" />
       default:
-        return <Award className="h-5 w-5 text-blue-500" /> // Default icon
+        return <Award className="h-5 w-5 text-blue-500" />
     }
   }
 
@@ -157,74 +157,9 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
             description: customAward.description,
             icon: getIconComponent(customAward.icon),
           })
-
-        }
-
-        if (customSpecialAwards.length === 0) {
-          const choreographyCriterion = eventCriteria.find(
-            (c) => c.name.toLowerCase().includes("choreography") || c.id.toLowerCase().includes("choreography"),
-          )
-          const costumeCriterion = eventCriteria.find(
-            (c) =>
-              c.name.toLowerCase().includes("costume") ||
-              c.name.toLowerCase().includes("props") ||
-              c.id.toLowerCase().includes("costume"),
-          )
-
-          if (choreographyCriterion) {
-            let bestChoreographyWinner = null
-            let highestChoreographyScore = 0
-
-            results.forEach((result) => {
-              const choreographyScore = result.criteriaAverages?.[choreographyCriterion.id] || 0
-              if (choreographyScore > highestChoreographyScore) {
-                highestChoreographyScore = choreographyScore
-                bestChoreographyWinner = {
-                  participantId: result.participantId,
-                  participantName: result.participantName,
-                  averageScore: choreographyScore,
-                }
-              }
-            })
-
-            awards.push({
-              awardName: "Best in Choreography Award",
-              criterionId: choreographyCriterion.id,
-              criterionName: choreographyCriterion.name,
-              winner: bestChoreographyWinner,
-              description: "Exceptional originality, synchronization, and storytelling through movement",
-              icon: <Star className="h-5 w-5 text-purple-500" />,
-            })
-          }
-
-          if (costumeCriterion) {
-            let bestCostumeWinner = null
-            let highestCostumeScore = 0
-
-            results.forEach((result) => {
-              const costumeScore = result.criteriaAverages?.[costumeCriterion.id] || 0
-              if (costumeScore > highestCostumeScore) {
-                highestCostumeScore = costumeScore
-                bestCostumeWinner = {
-                  participantId: result.participantId,
-                  participantName: result.participantName,
-                  averageScore: costumeScore,
-                }
-              }
-            })
-
-            awards.push({
-              awardName: "Best in Costume and Props Award",
-              criterionId: costumeCriterion.id,
-              criterionName: costumeCriterion.name,
-              winner: bestCostumeWinner,
-              description: "Most authentic, well-designed, and culturally representative attire and props",
-              icon: <Crown className="h-5 w-5 text-amber-500" />,
-            })
-          }
         }
       } catch (error) {
-        console.error("Error calculating special awards:", error)
+        // Optional: handle errors silently or set error state
       }
 
       setSpecialAwards(awards)
@@ -345,18 +280,14 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
 
       setResults(participantResults)
 
-      if (eventTitle.toUpperCase().includes("MAZURKA") && eventCriteria.length > 0) {
-        await calculateSpecialAwards(participantResults, eventCriteria)
-      } else {
-        setSpecialAwards([])
-      }
-    } catch (error) {
-      console.error("Error loading results:", error)
+      // Calculate special awards for any event now
+      await calculateSpecialAwards(participantResults, eventCriteria)
+    } catch {
       setError("Failed to load results. Please try again.")
     } finally {
       setLoading(false)
     }
-  }, [eventId, eventTitle, calculateSpecialAwards])
+  }, [eventId, calculateSpecialAwards])
 
   useEffect(() => {
     if (isOpen) {
@@ -418,7 +349,6 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
     return Array.from(judges)
   }
 
-  const isMazurkaEvent = eventTitle.toUpperCase().includes("MAZURKA")
   const hasSpecialAwards = specialAwards.length > 0
 
   return (
@@ -523,16 +453,13 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
             {hasSpecialAwards && (
               <TabsContent value="awards" className="space-y-6">
                 <div className="text-center mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">🏆 Mazurka Mindorena Special Awards</h3>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">🏆 Special Awards</h3>
                   <p className="text-gray-600">Recognizing excellence in specific performance categories</p>
                 </div>
 
                 <div className="grid gap-6">
                   {specialAwards.map((award) => (
-                    <Card
-                      key={award.awardName}
-                      className="border-purple-200 bg-gradient-to-r from-purple-50 to-amber-50"
-                    >
+                    <Card key={award.awardName} className="border-purple-200 bg-gradient-to-r from-purple-50 to-amber-50">
                       <CardHeader>
                         <CardTitle className="flex items-center gap-3 text-purple-800">
                           {award.icon}
@@ -555,15 +482,11 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
                             <div className="bg-white rounded-lg p-6 border-2 border-purple-300">
                               <div className="text-center">
                                 <div className="text-4xl mb-2">🏆</div>
-                                <h4 className="text-2xl font-bold text-purple-900 mb-2">
-                                  {award.winner.participantName}
-                                </h4>
+                                <h4 className="text-2xl font-bold text-purple-900 mb-2">{award.winner.participantName}</h4>
                                 <p className="text-purple-700 text-lg font-semibold">
                                   Score: {award.winner.averageScore.toFixed(1)}%
                                 </p>
-                                <Badge className="mt-2 bg-purple-600 text-white text-lg px-4 py-2">
-                                  🎖️ AWARD WINNER
-                                </Badge>
+                                <Badge className="mt-2 bg-purple-600 text-white text-lg px-4 py-2">🎖️ AWARD WINNER</Badge>
                               </div>
                             </div>
                           ) : (
@@ -576,17 +499,6 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
                     </Card>
                   ))}
                 </div>
-
-                <Card className="border-blue-200 bg-blue-50">
-                  <CardContent className="pt-4">
-                    <div className="text-center">
-                      <h4 className="font-semibold text-blue-800 mb-2">📜 Certificate Awards</h4>
-                      <p className="text-blue-700 text-sm">
-                        Certificates will be presented to the winning teams for each special award category.
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
               </TabsContent>
             )}
 
@@ -611,10 +523,7 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
                             <div>
                               <span className="font-medium text-gray-900">Judge: {score.judgeEmail}</span>
                               <p className="text-sm text-gray-500">
-                                Submitted:{" "}
-                                {score.submittedAt
-                                  ? score.submittedAt.toLocaleString()
-                                  : "Unknown"}
+                                Submitted: {score.submittedAt ? score.submittedAt.toLocaleString() : "Unknown"}
                               </p>
                             </div>
                             <div className="text-right">
@@ -683,9 +592,7 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Highest Score:</span>
-                          <span className="font-medium">
-                            {results.length > 0 ? `${results[0].averageScore.toFixed(1)}%` : "N/A"}
-                          </span>
+                          <span className="font-medium">{results.length > 0 ? `${results[0].averageScore.toFixed(1)}%` : "N/A"}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Average Score:</span>
@@ -695,7 +602,7 @@ export default function EventResultsDialog({ eventId, eventTitle }: EventResults
                               : "N/A"}
                           </span>
                         </div>
-                        {isMazurkaEvent && hasSpecialAwards && (
+                        {hasSpecialAwards && (
                           <div className="flex justify-between">
                             <span className="text-gray-600">Special Awards:</span>
                             <span className="font-medium">{specialAwards.length}</span>
